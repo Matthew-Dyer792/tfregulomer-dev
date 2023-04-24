@@ -9,6 +9,7 @@
 #' @param TTS_range A numeric vector to define TTS range. By default, c(-100, 1000) defines promoters as 100bp upstream and 1000bp downstream of real TTS.
 #' @param server server localtion to be linked, either 'sg' or 'ca'.
 #' @param TFregulome_url TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.
+#' @param local_db_path The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"
 #' @return  a data.frame, or an HTML report depending on the options.
 #' @keywords genomeAnnotate
 #' @export
@@ -21,7 +22,7 @@
 genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
                           return_html_report = FALSE, promoter_range = c(-1000,100),
                           TTS_range = c(-100, 1000), server = "ca",
-                          TFregulome_url)
+                          TFregulome_url, local_db_path)
 {
   # check input arguments
   if (missing(peaks))
@@ -100,36 +101,39 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
     stop("server should be either 'sg' (default) or 'ca'!")
   }
 
-  # make an appropriate API url
-  if (missing(TFregulome_url)){
-    if(server == 'sg')
-    {
-      TFregulome_url <- "https://bioinfo-csi.nus.edu.sg/methmotif/api/TFregulomeR/genomeAnnotate/"
-    }
-    else
-    {
-      TFregulome_url <- "https://methmotif.org/api/TFregulomeR/genomeAnnotate/"
-    }
-  } else if (endsWith(TFregulome_url, suffix = "/index.php")==TRUE){
-    TFregulome_url <- gsub("index.php", "", TFregulome_url)
-    TFregulome_url <- paste0(TFregulome_url, "api/TFregulomeR/genomeAnnotate/")
-  } else if (endsWith(TFregulome_url, suffix = "/")==TRUE){
-    TFregulome_url <- paste0(TFregulome_url, "api/TFregulomeR/genomeAnnotate/")
-  } else {
-    TFregulome_url <- paste0(TFregulome_url, "/api/TFregulomeR/genomeAnnotate/")
-  }
+  # call API helper function
+  TFregulome_url <- gsub("api/table_query/", "api/TFregulomeR/genomeAnnotate/",
+                         construct_API_url(server, TFregulome_url))
+  # helper function to check SQLite database
+  check_db_file(local_db_path)
 
   #check existence of geneName conversion file in methmotif server
-  name_conversion_file <- paste0(TFregulome_url, "hg38_UCSC_to_GeneName.txt")
+  if (!missing(local_db_path)) {
+    name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
+                                        "/TFregulomeR/genomeAnnotate/",
+                                        local_db_path),
+                                   "hg38_UCSC_to_GeneName.txt")
+  }
+  else {
+    name_conversion_file <- paste0(TFregulome_url, "hg38_UCSC_to_GeneName.txt")
+  }
   name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
                               warning=function(w) data.frame())
-  if (nrow(name_conversion) ==0)
-  {
-    message("There is a warning to connect MethMotif API!")
-    message("Advice:")
-    message("1) Check internet access;")
-    message("2) Current TFregulomeR server is implemented in MethMotif database, whose homepage is 'https://bioinfo-csi.nus.edu.sg/methmotif/' or 'https://methmotif.org'. If MethMotif homepage url is no more valid, please Google 'MethMotif', and input the valid MethMotif homepage url using 'TFregulome_url = '.")
-    return(NULL)
+  if (nrow(name_conversion) ==0) {
+    if (!missing(local_db_path)) {
+      message("There is a warning to connect TFregulomeR SQLite database!")
+      message("Advice:")
+      message("1) Check the path to the local database;")
+      message("2) Current TFregulomeR server is version 2.1. The SQLite implementation of TFregulomeR database available at 'https://methmotif.org/API_ZIPPED.zip';")
+      return(NULL)
+    }
+    else {
+      message("There is a warning to connect MethMotif API!")
+      message("Advice:")
+      message("1) Check internet access;")
+      message("2) Current TFregulomeR server is implemented in MethMotif database, whose homepage is 'https://bioinfo-csi.nus.edu.sg/methmotif/' or 'https://methmotif.org'. If MethMotif homepage url is no more valid, please Google 'MethMotif', and input the valid MethMotif homepage url using 'TFregulome_url = '.")
+      return(NULL)
+    }
   }
 
   peaks <- peaks[,c(1,2,3)]
@@ -149,14 +153,30 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
   {
     txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene::TxDb.Mmusculus.UCSC.mm10.knownGene
     GenomeInfoDb::seqlevels(txdb) <- paste0(rep("chr",times=21), c(seq(1,19,1),"X","Y"))
-    name_conversion_file <- paste0(TFregulome_url, "mm10_UCSC_to_GeneName.txt")
+    if (!missing(local_db_path)) {
+      name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
+                                          "/TFregulomeR/genomeAnnotate/",
+                                          local_db_path),
+                                     "mm10_UCSC_to_GeneName.txt")
+    }
+    else {
+      name_conversion_file <- paste0(TFregulome_url, "mm10_UCSC_to_GeneName.txt")
+    }
     name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
                                 warning=function(w) data.frame())
   } else
   {
     txdb <- TxDb.Mmusculus.UCSC.mm9.knownGene::TxDb.Mmusculus.UCSC.mm9.knownGene
     GenomeInfoDb::seqlevels(txdb) <- paste0(rep("chr",times=21), c(seq(1,19,1),"X","Y"))
-    name_conversion_file <- paste0(TFregulome_url, "mm10_UCSC_to_GeneName.txt")
+    if (!missing(local_db_path)) {
+      name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
+                                          "/TFregulomeR/genomeAnnotate/",
+                                          local_db_path),
+                                     "mm10_UCSC_to_GeneName.txt")
+    }
+    else {
+      name_conversion_file <- paste0(TFregulome_url, "mm10_UCSC_to_GeneName.txt")
+    }
     name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
                                 warning=function(w) data.frame())
   }
@@ -170,7 +190,15 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
     # if new version, using the new version file from the server
     if (startsWith(all_TSS_df[1,"tx_name"], "ENS"))
     {
-      name_conversion_file <- paste0(TFregulome_url, "hg38_UCSC_to_GeneName_NewVersion.txt")
+      if (!missing(local_db_path)) {
+        name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
+                                            "/TFregulomeR/genomeAnnotate/",
+                                            local_db_path),
+                                       "hg38_UCSC_to_GeneName_NewVersion.txt")
+      }
+      else {
+        name_conversion_file <- paste0(TFregulome_url, "hg38_UCSC_to_GeneName_NewVersion.txt")
+      }
       name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
                                   warning=function(w) data.frame())
     }
@@ -423,7 +451,8 @@ addDistanceAndClean <- function(feature_df, all_TSS, name_conversion, annotation
                                   id=feature_df_peak$id)
     feature_df$distance_tss <- unlist(lapply(seq(1,nrow(feature_df),1),
                                              function(x) paste0(distance(feature_df_peak_gr[x],all_TSS[feature_df[x,"feature_id"][[1]]]), collapse = ";")))
-    feature_df$transcript <- unlist(apply(as.data.frame(feature_df$feature_id),
+    # changed as.data.frame to as.matrix in order to fix "Arguments imply differing number of rows" bugs
+    feature_df$transcript <- unlist(apply(as.matrix(feature_df$feature_id),
                                           1,function(x) paste0(as.character(x[[1]]), collapse = ";")))
     feature_df$gene_name <- unlist(lapply(feature_df$feature_id,
                                           function(x) paste0(unique(gene_name[which(UCSC_name %in% x[[1]])]), collapse = ";")))

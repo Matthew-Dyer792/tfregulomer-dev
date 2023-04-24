@@ -1,15 +1,16 @@
 #' Browse the current data available in TFregulomeR
 #'
 #' This function allows you to get the current data in TFregulomeR
-#' @param species The species of interset
-#' @param organ The organ of interset
-#' @param sample_type The sample type of interset
-#' @param cell_tissue_name The name of tissue or cell of interset
-#' @param tf The TF of interset
-#' @param disease_state The disease state of interset
-#' @param source The source of interset
-#' @param server server localtion to be linked, either 'sg' or 'ca'.
+#' @param species The species of interest
+#' @param organ The organ of interest
+#' @param sample_type The sample type of interest
+#' @param cell_tissue_name The name of tissue or cell of interest
+#' @param tf The TF of interest
+#' @param disease_state The disease state of interest
+#' @param source The source of interest
+#' @param server server location to be linked, either 'sg' or 'ca'.
 #' @param TFregulome_url TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.
+#' @param local_db_path The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"
 #' @return  data.frame containing the information of the queried TFBSs in TFregulomeR
 #' @keywords ChIPseq data
 #' @export
@@ -18,32 +19,12 @@
 
 dataBrowser <- function(species, organ, sample_type, cell_tissue_name,
                         tf, disease_state, source, server = 'ca',
-                        TFregulome_url)
+                        TFregulome_url, local_db_path)
 {
-  # check server location
-  if (server != "sg" && server != "ca")
-  {
-    stop("server should be either 'sg' (default) or 'ca'!")
-  }
-
-  # make an appropriate API url
-  if (missing(TFregulome_url)){
-    if(server == 'sg')
-    {
-      TFregulome_url <- "https://bioinfo-csi.nus.edu.sg/methmotif/api/table_query/"
-    }
-    else
-    {
-      TFregulome_url <- "https://methmotif.org/api/table_query/"
-    }
-  } else if (endsWith(TFregulome_url, suffix = "/index.php")==TRUE){
-    TFregulome_url <- gsub("index.php", "", TFregulome_url)
-    TFregulome_url <- paste0(TFregulome_url, "api/table_query/")
-  } else if (endsWith(TFregulome_url, suffix = "/")==TRUE){
-    TFregulome_url <- paste0(TFregulome_url, "api/table_query/")
-  } else {
-    TFregulome_url <- paste0(TFregulome_url, "/api/table_query/")
-  }
+  # call API helper function
+  TFregulome_url <- construct_API_url(server, TFregulome_url)
+  # helper function to check SQLite database
+  check_db_file(local_db_path)
 
   query_index <- rep(0,7)
   query_value <- rep("",7)
@@ -88,79 +69,87 @@ dataBrowser <- function(species, organ, sample_type, cell_tissue_name,
     query_value["source"] <- paste0("source=",source)
   }
 
-  if (sum(query_index)==0)
-  {
-    query_url <- "listTFBS.php?AllTable=T"
+  # use the local SQLite database
+  if (!missing(local_db_path)) {
+    # query local SQLite database
+    request_content_df <- query_local_database(local_db_path, query_index, query_value)
   }
-  else
-  {
-    query_url <- paste0("listTFBS.php?AllTable=F&",
-                        paste0(query_value[query_index==1], collapse = "&"))
-  }
-  #parse JSON from API endpoint
-  request_content_json <- tryCatch({
-    fromJSON(paste0(TFregulome_url,query_url))
-  },
-  error = function(cond)
-  {
-    message("There is a warning to connect TFregulomeR API!")
-    message("Advice:")
-    message("1) Check internet access;")
-    message("2) Check dependent package 'jsonlite';")
-    message("3) Current TFregulomeR server is implemented in MethMotif database, whose homepage is 'https://bioinfo-csi.nus.edu.sg/methmotif/' or 'https://methmotif.org'. If MethMotif homepage url is no more valid, please Google 'MethMotif', and input the valid MethMotif homepage url using 'TFregulome_url = '.")
-    message(paste0("warning: ",cond))
-    return(NULL)
-  })
-  if (!is.null(request_content_json))
-  {
-    request_content_df <- as.data.frame(request_content_json$TFBS_records)
-    if (nrow(request_content_df)==0)
+  else {
+    # make a json request to the API
+    request_content_json <- API_request(TFregulome_url, query_index, query_value)
+    if (is.null(request_content_json))
     {
-      message(request_content_json$message)
+      message("Empty output for the request!")
       return(NULL)
     }
     else
     {
-      request_content_df_output <- request_content_df[,c("ID", "species", "organ",
-                                                        "sample_type",
-                                                        "cell_tissue_name",
-                                                        "description",
-                                                        "disease_state",
-                                                        "TF","source","source_ID",
-                                                        "peak_num",
-                                                        "peak_with_motif_num",
-                                                        "Consistent_with_HOCOMOCO_JASPAR",
-                                                        "Ncor_between_MEME_ChIP_and_HOMER")]
-      tfbs_num <- nrow(request_content_df_output)
-      species_result <- unique(request_content_df_output$species)
-      species_num <- length(species_result)
-      organ_result <- unique(request_content_df_output$organ)
-      organ_num <- length(organ_result)
-      sample_type_result <- unique(request_content_df_output$sample_type)
-      sample_type_num <- length(sample_type_result)
-      cell_tissue_name_num <- length(unique(request_content_df_output$cell_tissue_name))
-      disease_state_result <- unique(request_content_df_output$disease_state)
-      disease_state_num <- length(disease_state_result)
-      tf_num <- length(unique(request_content_df_output$TF))
-      source_result <- unique(request_content_df_output$source)
-      message(paste0(tfbs_num," record(s) found: ..."))
-      message(paste0("... covering ", tf_num, " TF(s)"))
-      message(paste0("... from ", species_num," species:"))
-      message(paste0("... ...", paste0(species_result, collapse = ", ")))
-      message(paste0("... from ", organ_num," organ(s):"))
-      message(paste0("... ... ", paste0(organ_result, collapse = ", ")))
-      message(paste0("... in ", sample_type_num, " sample type(s):"))
-      message(paste0("... ... ", paste0(sample_type_result, collapse = ", ")))
-      message(paste("... in ", cell_tissue_name_num, " different cell(s) or tissue(s)"))
-      message(paste0("... in ", disease_state_num," type(s) of disease state(s):"))
-      message(paste0("... ... ", paste0(disease_state_result, collapse = ", ")))
-      message(paste0("... from the source(s): ", paste0(source_result, collapse = ", ")))
-      return(request_content_df_output)
+      request_content_df <- as.data.frame(request_content_json$TFBS_records)
     }
   }
-  else
-  {
-    message("Empty output for the request!")
-    return(NULL)
+
+  # final output and return data.frame
+  if (nrow(request_content_df)==0) {
+    if (exists("request_content_json")) {
+      message(request_content_json$message)
+      return(NULL)
+    } else {
+      message("No matched records found.")
+      return(NULL)
+    }
   }
+  else {
+    request_content_df_output <- request_content_df[,c("ID", "species", "organ",
+                                                       "sample_type",
+                                                       "cell_tissue_name",
+                                                       "description",
+                                                       "disease_state",
+                                                       "TF","source","source_ID",
+                                                       "peak_num",
+                                                       "peak_with_motif_num",
+                                                       "Consistent_with_HOCOMOCO_JASPAR",
+                                                       "Ncor_between_MEME_ChIP_and_HOMER")]
+    output_message(request_content_df_output)
+    return(request_content_df_output)
+  }
+}
+
+
+#' A structured format for printing to the console
+#'
+#' This function facilitates the printing of select metrics calculated from
+#' the the queried TFBSs in TFregulomeR. This is an internal helper function
+#' not meant to be called on its own.
+#' @param requested_df data.frame containing the information of the queried TFBSs in TFregulomeR
+#' @return  prints to console select metrics from the queried TFBSs in TFregulomeR
+#' @keywords internal
+#' @export
+#' @examples
+#' output_message(request_content_df_output)
+
+output_message <- function(requested_df) {
+  tfbs_num <- nrow(requested_df)
+  species_result <- unique(requested_df$species)
+  species_num <- length(species_result)
+  organ_result <- unique(requested_df$organ)
+  organ_num <- length(organ_result)
+  sample_type_result <- unique(requested_df$sample_type)
+  sample_type_num <- length(sample_type_result)
+  cell_tissue_name_num <- length(unique(requested_df$cell_tissue_name))
+  disease_state_result <- unique(requested_df$disease_state)
+  disease_state_num <- length(disease_state_result)
+  tf_num <- length(unique(requested_df$TF))
+  source_result <- unique(requested_df$source)
+  message(paste0(tfbs_num," record(s) found: ..."))
+  message(paste0("... covering ", tf_num, " TF(s)"))
+  message(paste0("... from ", species_num," species:"))
+  message(paste0("... ...", paste0(species_result, collapse = ", ")))
+  message(paste0("... from ", organ_num," organ(s):"))
+  message(paste0("... ... ", paste0(organ_result, collapse = ", ")))
+  message(paste0("... in ", sample_type_num, " sample type(s):"))
+  message(paste0("... ... ", paste0(sample_type_result, collapse = ", ")))
+  message(paste("... in ", cell_tissue_name_num, " different cell(s) or tissue(s)"))
+  message(paste0("... in ", disease_state_num," type(s) of disease state(s):"))
+  message(paste0("... ... ", paste0(disease_state_result, collapse = ", ")))
+  message(paste0("... from the source(s): ", paste0(source_result, collapse = ", ")))
 }

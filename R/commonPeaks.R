@@ -13,6 +13,7 @@
 #' @param motif_type Motif PFM format, either in MEME by default or TRANSFAC.
 #' @param server server localtion to be linked, either 'sg' or 'ca'.
 #' @param TFregulome_url TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.
+#' @param local_db_path The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"
 #' @return  matrix of CommonPeaksMM class objects
 #' @keywords commonPeaks
 #' @export
@@ -36,7 +37,8 @@ commonPeaks <- function(target_peak_id,
                         methylation_profile_in_narrow_region = TRUE,
                         motif_type = "MEME",
                         server = "ca",
-                        TFregulome_url)
+                        TFregulome_url,
+                        local_db_path)
 {
   # check the input arguments
   if(missing(target_peak_id) && missing(user_target_peak_list))
@@ -65,31 +67,10 @@ commonPeaks <- function(target_peak_id,
     stop("motif_type should be either 'MEME' (default) or 'TRANSFAC'!")
   }
 
-  # check server location
-  if (server != "sg" && server != "ca")
-  {
-    stop("server should be either 'sg' (default) or 'ca'!")
-  }
-
-  # make an appropriate API url
-  if (missing(TFregulome_url)){
-    if(server == 'sg')
-    {
-      TFregulome_url <- "https://bioinfo-csi.nus.edu.sg/methmotif/api/table_query/"
-    }
-    else
-    {
-      TFregulome_url <- "https://methmotif.org/api/table_query/"
-    }
-
-  } else if (endsWith(TFregulome_url, suffix = "/index.php")==TRUE){
-    TFregulome_url <- gsub("index.php", "", TFregulome_url)
-    TFregulome_url <- paste0(TFregulome_url, "api/table_query/")
-  } else if (endsWith(TFregulome_url, suffix = "/")==TRUE){
-    TFregulome_url <- paste0(TFregulome_url, "api/table_query/")
-  } else {
-    TFregulome_url <- paste0(TFregulome_url, "/api/table_query/")
-  }
+  # call API helper function
+  TFregulome_url <- construct_API_url(server, TFregulome_url)
+  # helper function to check SQLite database
+  check_db_file(local_db_path)
 
   message("TFregulomeR::commonPeaks() starting ... ...")
   if (methylation_profile_in_narrow_region)
@@ -122,7 +103,8 @@ commonPeaks <- function(target_peak_id,
     for (i in target_peak_id)
     {
       peak_i <- suppressMessages(loadPeaks(id = i, includeMotifOnly = motif_only_for_target_peak,
-                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url)))
+                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
+                                           local_db_path = local_db_path))
       if (is.null(peak_i))
       {
         message(paste0("... ... NO peak file for your id '", i,"'."))
@@ -183,7 +165,8 @@ commonPeaks <- function(target_peak_id,
         target_peak_list_all[[target_list_count]] <- peak_i
         # test if user input id i match any TFregulomeR ID
         motif_matrix_i <- suppressMessages(searchMotif(id = user_target_peak_id[i],
-                                                       TFregulome_url = gsub("api/table_query/", "", TFregulome_url)))
+                                                       TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
+                                                       local_db_path = local_db_path))
         if (is.null(motif_matrix_i))
         {
           is_taregt_TFregulome <- c(is_taregt_TFregulome, FALSE)
@@ -224,7 +207,8 @@ commonPeaks <- function(target_peak_id,
     for (i in compared_peak_id)
     {
       peak_i <- suppressMessages(loadPeaks(id = i, includeMotifOnly = motif_only_for_compared_peak,
-                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url)))
+                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
+                                           local_db_path = local_db_path))
       if (is.null(peak_i))
       {
         message(paste0("... ... NO peak file for your id '", i,"'."))
@@ -269,7 +253,9 @@ commonPeaks <- function(target_peak_id,
         compared_list_count <- compared_list_count + 1
         compared_peak_list_all[[compared_list_count]] <- peak_i_sub
         # test if user input id i match any TFregulomeR ID
-        motif_matrix_i <- suppressMessages(searchMotif(id = user_compared_peak_id[i], TFregulome_url = gsub("api/table_query/", "", TFregulome_url)))
+        motif_matrix_i <- suppressMessages(searchMotif(id = user_compared_peak_id[i],
+                                                       TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
+                                                       local_db_path = local_db_path))
         if (is.null(motif_matrix_i))
         {
           is_compared_TFregulome <- c(is_compared_TFregulome, FALSE)
@@ -307,21 +293,17 @@ commonPeaks <- function(target_peak_id,
     if (is_taregt_TFregulome[i])
     {
       isTFregulome_target <- TRUE
-      query_url <- paste0("listTFBS.php?AllTable=F&id=",target_id_i)
-      request_content_json <- tryCatch({
-        fromJSON(paste0(TFregulome_url,query_url))
-      },
-      error = function(cond)
-      {
-        message("There is a warning to connect TFregulomeR API!")
-        message("Advice:")
-        message("1) Check internet access;")
-        message("2) Check dependent package 'jsonlite';")
-        message("3) Current TFregulomeR server is implemented in MethMotif database, whose homepage is 'https://bioinfo-csi.nus.edu.sg/methmotif/' or 'https://methmotif.org'. If MethMotif homepage url is no more valid, please Google 'MethMotif', and input the valid MethMotif homepage url using 'TFregulome_url = '.")
-        message(paste0("warning: ",cond))
-        return(NULL)
-      })
-      request_content_df <- as.data.frame(request_content_json$TFBS_records)
+      if (!missing(local_db_path)) {
+        # make a request to the local database
+        request_content_df <- query_local_database(local_db_path,
+                                                   id = target_id_i)
+      }
+      else {
+        # make a json request to the API
+        request_content_json <- API_request(TFregulome_url,
+                                            id = target_id_i)
+        request_content_df <- as.data.frame(request_content_json$TFBS_records)
+      }
       source_i <- request_content_df[,"source"]
       if (source_i == "MethMotif")
       {

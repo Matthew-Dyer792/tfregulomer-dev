@@ -8,7 +8,7 @@
 
 TFregulomeR
 
-v2.0.2
+v2.1.0
 
 **changed to Canada server as default (Singapore server retired) compared to v2.0.1 (updated on April 17, 2022)**
 
@@ -107,6 +107,7 @@ The scripts of case studies used in our manuscript are available as below.
 1) Required packages: the packages below are the basic prerequisite packages for *TFregulomeR* functionalities
 
     - [jsonlite](https://cran.r-project.org/web/packages/jsonlite/index.html) (>= 1.5)
+    - [RSQLite](https://cran.r-project.org/web/packages/RSQLite/index.html) (>= 2.3.1)
     - [ggplot2](https://cran.r-project.org/web/packages/ggplot2/index.html) (>= 3.0.0)
     - [ggseqlogo](https://cran.r-project.org/web/packages/ggseqlogo/index.html) (>= 0.1)
     - [gridExtra](https://cran.r-project.org/web/packages/gridExtra/index.html) (>= 2.3)
@@ -135,6 +136,8 @@ install.packages("devtools")
 devtools::install_github("benoukraflab/TFregulomeR")
 ```
 The step above will automatically install the required packages. However, you still need to install optional packages if you opt to use the functions such as `greatAnnotate()`, `genomeAnnotate()` and `toTFBSTools()`.
+
+If you would like to query a local version of the TFregulomeR database to facilitate faster execution speeds download and unzip the file found [here](https://methmotif.org/API_TFregulomeR/TFregulomeR-database-2.1.zip).
 
 -------
 

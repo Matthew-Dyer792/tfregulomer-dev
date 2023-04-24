@@ -1,9 +1,10 @@
 Package: TFregulomeR
 Type: Package
 Title: TFregulomeR reveals transcription factors’ context-specific features and functions
-Version: 2.0.0
+Version: 2.1.0
 Description: An R-package linked to a large timely-updated compendium of cistrome and methylome datasets, implemented with functionalities that facilitate the manipulation and analysis of TFBS and methylome meta-data. In particular, TFregulomeR permits the characterisation of TF binding partners and cell-specific TFBSs, along with the study of TF’s functions in the context of different partners’ combinations and DNA methylation levels.
-Authors@R: c(person("Quy Xiao Xuan", "Lin", email = "linquyzju@gmail.com", role = c("aut", "cre")), 
+Authors@R: c(person("Quy Xiao Xuan", "Lin", email = "linquyzju@gmail.com", role = c("aut", "cre")),
+             person("Dyer", "Matthew", email = "mjd443@mun.ca", role = "ctb")
              person("Denis", "Thieffry", email = "denis.thieffry@ens.fr", role = "ctb"),
              person("Sudhakar", "Jha", email = "csisjha@nus.edu.sg", role = "ctb"),
               person("Touati", "Benoukraf", email = "tbenoukraf@mun.ca", role = "aut"))
@@ -11,7 +12,8 @@ Depends: R (>= 3.6.0), methods
 Imports: graphics,
          grDevices,
          utils,
-         jsonlite (>= 1.5), 
+         jsonlite (>= 1.5),
+         RSQLite (>= 2.3.1),
          ggplot2 (>= 3.0.0), 
          ggseqlogo (>= 0.1), 
          gridExtra (>= 2.3), 

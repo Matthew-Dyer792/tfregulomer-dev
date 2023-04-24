@@ -4,6 +4,7 @@
 #' @param id Required. TFregulomeR ID.
 #' @param server server localtion to be linked, either 'sg' or 'ca'.
 #' @param TFregulome_url TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.
+#' @param local_db_path The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"
 #' @return  An object of class PFMatrix
 #' @keywords toTFBSTools
 #' @export
@@ -11,49 +12,21 @@
 #' require(TFBSTools)
 #' CEBPB_pfm <- toTFBSTools(id = "MM1_HSA_K562_CEBPB")
 
-toTFBSTools <- function(id, server = "ca",TFregulome_url)
+toTFBSTools <- function(id, server = "ca", TFregulome_url, local_db_path)
 {
   if (missing(id))
   {
     stop("Please provide a TFregulomeR ID using 'id ='")
   }
 
-  # check server location
-  if (server != "sg" && server != "ca")
-  {
-    stop("server should be either 'sg' (default) or 'ca'!")
-  }
-  # make an appropriate API url
-  if (missing(TFregulome_url)){
-    if(server == 'sg')
-    {
-      TFregulome_url <- "https://bioinfo-csi.nus.edu.sg/methmotif/api/table_query/"
-      # store TFregulome_url as TFregulome_url_bk for searchMotif() later
-      TFregulome_url_bk <- "https://bioinfo-csi.nus.edu.sg/methmotif"
-    }
-    else
-    {
-      TFregulome_url <- "https://methmotif.org/api/table_query/"
-      # store TFregulome_url as TFregulome_url_bk for searchMotif() later
-      TFregulome_url_bk <- "https://methmotif.org"
-    }
-  } else if (endsWith(TFregulome_url, suffix = "/index.php")==TRUE){
-    # store TFregulome_url as TFregulome_url_bk for searchMotif() later
-    TFregulome_url_bk <- TFregulome_url
-    TFregulome_url <- gsub("index.php", "", TFregulome_url)
-    TFregulome_url <- paste0(TFregulome_url, "api/table_query/")
-  } else if (endsWith(TFregulome_url, suffix = "/")==TRUE){
-    # store TFregulome_url as TFregulome_url_bk for searchMotif() later
-    TFregulome_url_bk <- TFregulome_url
-    TFregulome_url <- paste0(TFregulome_url, "api/table_query/")
-  } else {
-    # store TFregulome_url as TFregulome_url_bk for searchMotif() later
-    TFregulome_url_bk <- TFregulome_url
-    TFregulome_url <- paste0(TFregulome_url, "/api/table_query/")
-  }
+  # call API helper function
+  TFregulome_url <- construct_API_url(server, TFregulome_url)
+  # helper function to check SQLite database
+  check_db_file(local_db_path)
 
   methmotif_output <- suppressMessages(searchMotif(id = id, motif_format = "TRANSFAC",
-                                                   TFregulome_url=TFregulome_url_bk))
+                                                   TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
+                                                   local_db_path = local_db_path))
   if (is.null(methmotif_output))
   {
     message(paste0("No record for id ", id, " in TFregulomeR!"))
