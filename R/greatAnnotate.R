@@ -271,8 +271,8 @@ hg38Tohg19 <- function(peaks)
 formHTMLoutput <- function(all, test)
 {
   html_contents_CC <- rbokehPlot(inputdata = all[which(all$go_id=="CC"),], inputtype = "CC")
-  print(html_contents_CC)
-  # write(html_contents_CC, "cc_bokeh_result.html")
+  # print(html_contents_CC)
+  write(html_contents_CC, "cc_bokeh_result.html")
   modelid_CC <- html_contents_CC[[1]]
   docid_CC <- html_contents_CC[[2]]
   docs_json_CC <- html_contents_CC[[3]]
