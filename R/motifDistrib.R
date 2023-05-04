@@ -18,7 +18,7 @@
 #'                                     peak_id = "MM1_HSA_K562_CEBPB")
 
 motifDistrib <- function(id, peak_list, peak_id, plot_at_each_side = 100,
-                         server = "ca", TFregulome_url, local_db_path)
+                         server = "ca", TFregulome_url, local_db_path = NULL)
 {
   # check input arguments
   if (missing(id))
@@ -64,7 +64,7 @@ motifDistrib <- function(id, peak_list, peak_id, plot_at_each_side = 100,
   # start analysing
   message(paste0("motifDistrib starts analysing for TFregulomeR ID = ", id))
   # get motif sequences for id
-  if (!missing(local_db_path)) {
+  if (!is.null(local_db_path)) {
     # make a request to the local database
     request_content_df <- query_local_database(local_db_path, id = id)
   }
@@ -133,7 +133,7 @@ motifDistrib <- function(id, peak_list, peak_id, plot_at_each_side = 100,
     peak_target$target_peak_id <- paste0(peak_id_i,"_target_peak_", as.vector(rownames(peak_target)))
 
     # query MethMotif API
-    if (!missing(local_db_path)) {
+    if (!is.null(local_db_path)) {
       # make a request to the local database
       request_content_df <- query_local_database(local_db_path, id = id)
     }

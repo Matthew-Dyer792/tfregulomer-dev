@@ -22,7 +22,7 @@
 genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
                           return_html_report = FALSE, promoter_range = c(-1000,100),
                           TTS_range = c(-100, 1000), server = "ca",
-                          TFregulome_url, local_db_path)
+                          TFregulome_url, local_db_path = NULL)
 {
   # check input arguments
   if (missing(peaks))
@@ -108,7 +108,7 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
   check_db_file(local_db_path)
 
   #check existence of geneName conversion file in methmotif server
-  if (!missing(local_db_path)) {
+  if (!is.null(local_db_path)) {
     name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
                                         "/TFregulomeR/genomeAnnotate/",
                                         local_db_path),
@@ -120,7 +120,7 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
   name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
                               warning=function(w) data.frame())
   if (nrow(name_conversion) ==0) {
-    if (!missing(local_db_path)) {
+    if (!is.null(local_db_path)) {
       message("There is a warning to connect TFregulomeR SQLite database!")
       message("Advice:")
       message("1) Check the path to the local database;")
@@ -153,7 +153,7 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
   {
     txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene::TxDb.Mmusculus.UCSC.mm10.knownGene
     GenomeInfoDb::seqlevels(txdb) <- paste0(rep("chr",times=21), c(seq(1,19,1),"X","Y"))
-    if (!missing(local_db_path)) {
+    if (!is.null(local_db_path)) {
       name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
                                           "/TFregulomeR/genomeAnnotate/",
                                           local_db_path),
@@ -168,7 +168,7 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
   {
     txdb <- TxDb.Mmusculus.UCSC.mm9.knownGene::TxDb.Mmusculus.UCSC.mm9.knownGene
     GenomeInfoDb::seqlevels(txdb) <- paste0(rep("chr",times=21), c(seq(1,19,1),"X","Y"))
-    if (!missing(local_db_path)) {
+    if (!is.null(local_db_path)) {
       name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
                                           "/TFregulomeR/genomeAnnotate/",
                                           local_db_path),
@@ -190,7 +190,7 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
     # if new version, using the new version file from the server
     if (startsWith(all_TSS_df[1,"tx_name"], "ENS"))
     {
-      if (!missing(local_db_path)) {
+      if (!is.null(local_db_path)) {
         name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
                                             "/TFregulomeR/genomeAnnotate/",
                                             local_db_path),

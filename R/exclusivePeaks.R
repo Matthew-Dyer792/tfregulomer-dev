@@ -38,7 +38,7 @@ exclusivePeaks <- function(target_peak_id,
                            motif_type = "MEME",
                            server = 'ca',
                            TFregulome_url,
-                           local_db_path)
+                           local_db_path = NULL)
 {
   # check the input arguments
   if(missing(target_peak_id) && missing(user_target_peak_list))
@@ -294,7 +294,7 @@ exclusivePeaks <- function(target_peak_id,
     if (is_taregt_TFregulome[i])
     {
       isTFregulome_target <- TRUE
-      if (!missing(local_db_path)) {
+      if (!is.null(local_db_path)) {
         # make a request to the local database
         request_content_df <- query_local_database(local_db_path,
                                                    id = target_id_i)

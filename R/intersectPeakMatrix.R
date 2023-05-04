@@ -40,7 +40,7 @@ intersectPeakMatrix <- function(peak_id_x,
                                 motif_type = "MEME",
                                 server = "ca",
                                 TFregulome_url,
-                                local_db_path)
+                                local_db_path = NULL)
 {
   # check the input argument
   if (missing(peak_id_x) && missing(user_peak_list_x))
@@ -339,7 +339,7 @@ intersectPeakMatrix <- function(peak_id_x,
     if (is_x_TFregulome[i])
     {
       isTFregulome_x <- TRUE
-      if (!missing(local_db_path)) {
+      if (!is.null(local_db_path)) {
         # make a request to the local database
         request_content_df <- query_local_database(local_db_path,
                                                    id = id_x)
@@ -378,7 +378,7 @@ intersectPeakMatrix <- function(peak_id_x,
       if (is_y_TFregulome[j])
       {
         isTFregulome_y <- TRUE
-        if (!missing(local_db_path)) {
+        if (!is.null(local_db_path)) {
           # make a request to the local database
           request_content_df <- query_local_database(local_db_path,
                                                      id = id_y)

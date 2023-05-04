@@ -15,7 +15,7 @@
 #'                                    motif_format = "TRANSFAC")
 
 searchMotif <- function(id, motif_format = "MEME",
-                        server = "ca", TFregulome_url, local_db_path)
+                        server = "ca", TFregulome_url, local_db_path = NULL)
 {
   # check motif_format MEME and TRANSFAC.
   motif_format = toupper(motif_format)
@@ -33,7 +33,7 @@ searchMotif <- function(id, motif_format = "MEME",
   {
     stop("Please input regulome ID using 'id = '!")
   }
-  else if (!missing(local_db_path)) {
+  else if (!is.null(local_db_path)) {
     # make a request to the local database
     request_content_df <- query_local_database(local_db_path, id = id)
   }

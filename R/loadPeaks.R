@@ -5,7 +5,7 @@
 #' @param includeMotifOnly Either TRUE or FALSE (default). If TRUE, only peaks with motif will be returned
 #' @param server server localtion to be linked, either 'sg' or 'ca'.
 #' @param TFregulome_url TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.
-#' @param local_db_path The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"
+#' @param local_db_path The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_TFregulomeR/downloads/"
 #' @return  a data.frame containing peak coordinates
 #' @keywords loadPeaks
 #' @export
@@ -13,7 +13,7 @@
 #' CEBPB_peaks <- loadPeaks(id = "MM1_HSA_K562_CEBPB")
 
 loadPeaks <- function(id, includeMotifOnly = FALSE,
-                      server = "ca", TFregulome_url, local_db_path)
+                      server = "ca", TFregulome_url, local_db_path = NULL)
 {
   # call API helper function
   TFregulome_url <- construct_API_url(server, TFregulome_url)
@@ -24,7 +24,7 @@ loadPeaks <- function(id, includeMotifOnly = FALSE,
   if (missing(id)) {
     stop("Please input a TFregulomeR id using 'id = '.")
   }
-  else if (!missing(local_db_path)) {
+  else if (!is.null(local_db_path)) {
     # make a request to the local database
     request_content_df <- query_local_database(local_db_path, id = id)
   }

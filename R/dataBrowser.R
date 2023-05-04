@@ -19,7 +19,7 @@
 
 dataBrowser <- function(species, organ, sample_type, cell_tissue_name,
                         tf, disease_state, source, server = 'ca',
-                        TFregulome_url, local_db_path)
+                        TFregulome_url, local_db_path = NULL)
 {
   # call API helper function
   TFregulome_url <- construct_API_url(server, TFregulome_url)
@@ -70,7 +70,7 @@ dataBrowser <- function(species, organ, sample_type, cell_tissue_name,
   }
 
   # use the local SQLite database
-  if (!missing(local_db_path)) {
+  if (!is.null(local_db_path)) {
     # query local SQLite database
     request_content_df <- query_local_database(local_db_path, query_index, query_value)
   }

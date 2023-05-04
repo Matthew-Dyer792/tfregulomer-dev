@@ -11,9 +11,9 @@
 #' check_db_file(local_db_path)
 #'
 
-check_db_file <- function(local_db_path) {
+check_db_file <- function(local_db_path = NULL) {
   # check file name
-  if (!missing(local_db_path)) {
+  if (!is.null(local_db_path)) {
     if (endsWith(local_db_path, suffix = "/tfregulome.sqlite")==FALSE) {
       stop("local SQLite database should be call 'tfregulome.sqlite'!")
     } else if (!file.exists(local_db_path)) {
