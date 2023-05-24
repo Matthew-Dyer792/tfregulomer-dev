@@ -247,13 +247,13 @@ intersectPeakMatrixResult <- function(intersectPeakMatrix,
     {
       for (i in seq(1, nrow(intersectPeakMatrix), 1))
       {
-        if (saving_MethMotif_logo_x_id != "all" && !(rownames(intersectPeakMatrix)[i] %in% saving_MethMotif_logo_x_id))
+        if (!("all" %in% saving_MethMotif_logo_x_id) && !(rownames(intersectPeakMatrix)[i] %in% saving_MethMotif_logo_x_id))
         {
           next
         }
         for (j in seq(1, ncol(intersectPeakMatrix), 1))
         {
-          if (saving_MethMotif_logo_y_id != "all" && !(colnames(intersectPeakMatrix)[j] %in% saving_MethMotif_logo_y_id))
+          if (!("all" %in% saving_MethMotif_logo_y_id) && !(colnames(intersectPeakMatrix)[j] %in% saving_MethMotif_logo_y_id))
           {
             next
           }
