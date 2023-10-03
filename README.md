@@ -10,6 +10,8 @@ TFregulomeR
 
 v2.1.0
 
+[![DOI](https://zenodo.org/badge/649837036.svg)](https://zenodo.org/badge/latestdoi/649837036)
+
 **changed to Canada server as default (Singapore server retired) compared to v2.0.1 (updated on April 17, 2022)**
 
 New features: 
