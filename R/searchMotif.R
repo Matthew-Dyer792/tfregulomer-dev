@@ -31,7 +31,7 @@ searchMotif <- function(id, motif_format = "MEME",
 
   if(missing(id))
   {
-    stop("Please input regulome ID using 'id = '!")
+    stop("Please input TFregulome ID using 'id = '!")
   }
   else if (!is.null(local_db_path)) {
     # make a request to the local database
