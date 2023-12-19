@@ -14,7 +14,7 @@
 check_db_file <- function(local_db_path = NULL) {
   # check file name
   if (!is.null(local_db_path)) {
-    if (endsWith(local_db_path, suffix = "/tfregulome.sqlite")==FALSE) {
+    if (endsWith(local_db_path, suffix = "/tfregulome.sqlite") == FALSE) {
       stop("local SQLite database should be call 'tfregulome.sqlite'!")
     } else if (!file.exists(local_db_path)) {
       stop("cannot locate the SQLite database from the provided path!")
@@ -41,18 +41,14 @@ query_local_database <- function(db, query_index, query_value, id) {
   # prepare query
   if (!missing(id)) {
     query <- paste0("SELECT * FROM TFBS_table WHERE UPPER(id)=UPPER('", id, "')")
-  }
-  else if (!missing(query_index) && !missing(query_value)) {
+  } else if (!missing(query_index) && !missing(query_value)) {
     if (sum(query_index) == 0) {
       query <- "SELECT * FROM TFBS_table"
-    }
-    else {
+    } else {
       query <- paste0("SELECT * FROM TFBS_table WHERE ",
-                      paste0("UPPER(", sub("=", ")=UPPER('", query_value[query_index == 1]),
-                             "')", collapse = " AND "))
+                      paste0("UPPER(", sub("=", ")=UPPER('", query_value[query_index == 1]), "')", collapse = " AND "))
     }
-  }
-  else {
+  } else {
     stop("Trying to query database without parameters")
   }
 
@@ -71,7 +67,7 @@ query_local_database <- function(db, query_index, query_value, id) {
   })
   dbDisconnect(con)
 
-  if (nrow(results)>0) {
+  if (nrow(results) > 0) {
     # modify the output table
     results$motif_MEME <- paste0(base_dir, "_", results$species, "/",
                                  results$organ, "/motif_matrix/",
@@ -96,13 +92,11 @@ query_local_database <- function(db, query_index, query_value, id) {
                                                     results$organ,
                                                     "/DNA_methylation_profile_200bp/",
                                                     results$DNA_methylation_profile_200bp)
-    results$TFBS <- paste0(base_dir, "_", results$species, "/", results$organ,
-                           "/TFBS/", results$TFBS)
+    results$TFBS <- paste0(base_dir, "_", results$species, "/", results$organ, "/TFBS/", results$TFBS)
     results$Ncor_between_MEME_ChIP_and_HOMER <- as.logical(results$Ncor_between_MEME_ChIP_and_HOMER)
 
     return(results)
-  }
-  else {
+  } else {
     return(results)
   }
 }

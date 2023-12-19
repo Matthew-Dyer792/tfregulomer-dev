@@ -12,21 +12,17 @@
 #' construct_API_url(server, TFregulome_url)
 #'
 
-construct_API_url <- function(server, TFregulome_url) {
+construct_API_url <- function(server = "ca", TFregulome_url) {
   # check server location
-  if (server != "sg" && server != "ca")
-  {
+  if (server != "sg" && server != "ca") {
     stop("server should be either 'ca' (default) or 'sg'!")
   }
 
   # make an appropriate API url
   if (missing(TFregulome_url)){
-    if(server == 'sg')
-    {
+    if(server == 'sg') {
       TFregulome_url <- "https://bioinfo-csi.nus.edu.sg/methmotif/api/table_query/"
-    }
-    else
-    {
+    } else {
       TFregulome_url <- "https://methmotif.org/api/table_query/"
     }
   } else if (endsWith(TFregulome_url, suffix = "/index.php")==TRUE){
@@ -57,17 +53,14 @@ API_request <- function(TFregulome_url, query_index, query_value, id) {
   # prepare query_url
   if (!missing(id)) {
     query_url <- paste0("listTFBS.php?AllTable=F&id=", id)
-  }
-  else if (!missing(query_index) && !missing(query_value)) {
-    if (sum(query_index)==0) {
+  } else if (!missing(query_index) && !missing(query_value)) {
+    if (sum(query_index) == 0) {
       query_url <- "listTFBS.php?AllTable=T"
-    }
-    else {
+    } else {
       query_url <- paste0("listTFBS.php?AllTable=F&",
-                          paste0(query_value[query_index==1], collapse = "&"))
+                          paste0(query_value[query_index == 1], collapse = "&"))
     }
-  }
-  else {
+  } else {
     stop("Trying to query database without parameters")
   }
 
@@ -81,7 +74,7 @@ API_request <- function(TFregulome_url, query_index, query_value, id) {
     message("1) Check internet access;")
     message("2) Check dependent package 'jsonlite';")
     message("3) Current TFregulomeR server is implemented in MethMotif database, whose homepage is 'https://bioinfo-csi.nus.edu.sg/methmotif/' or 'https://methmotif.org'. If MethMotif homepage url is no more valid, please Google 'MethMotif', and input the valid MethMotif homepage url using 'TFregulome_url = '.")
-    message(paste0("warning: ",cond))
+    message(paste0("warning: ", cond))
     return(NULL)
   })
   return(request_content_json)
