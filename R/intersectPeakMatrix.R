@@ -10,6 +10,7 @@
 #' @param user_peak_list_y A list of data.frames, each of which contains user's own bed-format peak regions for peak list y.
 #' @param user_peak_y_id Character of vector, each of which is a unique ID corresponding to each peak set in the list user_peak_list_y. If the IDs are not provided or not unique, the function will automatically generate the IDs of its own. If any of the peak sets is derived from TFregulomeR, its TFregulomeR ID should be used here correspondingly.
 #' @param methylation_profile_in_narrow_region Either TRUE (default) of FALSE. If TRUE, methylation states in 200bp window surrounding peak summits for each intersected peak pair from peak_id_x (peak_id_y) and user_peak_list_x (user_peak_list_y) with TFregulomeR ID.
+#' @param only_overlapping_tfbs Either TRUE of FALSE (default). If TRUE, only TFBS sites directly overlapping between the x and y sites will be returned.
 #' @param external_source a bed-like data.frame files with the fourth column as the score to be profiled in pairwise comparison regions.
 #' @param motif_type Motif PFM format, either in MEME by default or TRANSFAC.
 #' @param server server localtion to be linked, either 'sg' or 'ca'.
@@ -43,54 +44,40 @@ intersectPeakMatrix <- function(peak_id_x,
                                 local_db_path = NULL)
 {
   # check the input argument
-  if (missing(peak_id_x) && missing(user_peak_list_x))
-  {
+  if (missing(peak_id_x) && missing(user_peak_list_x)) {
     stop("No peak list x input. Please input TFregulomeR peaks using TFregulomeR ID(s) by 'peak_id_x = ' OR your own peak list using a list of data.frame(s) containing bed-format regions by 'user_peak_list_x = '")
   }
-  if (missing(peak_id_y) && missing(user_peak_list_y))
-  {
+  if (missing(peak_id_y) && missing(user_peak_list_y)) {
     stop("No peak list y input. Please input TFregulomeR peaks using TFregulomeR ID(s) by 'peak_id_y = ' OR your own peak list using a list of data.frame(s) containing bed-format regions by 'user_peak_list_y = '")
   }
   if ((!missing(user_peak_list_x) && !is.list(user_peak_list_x)) ||
-      (!missing(user_peak_list_y) && !is.list(user_peak_list_y)))
-  {
+      (!missing(user_peak_list_y) && !is.list(user_peak_list_y))) {
     stop("The class of input 'user_peak_list_x' and 'user_peak_list_y' should be 'list', a list of bed-like data.frame storing peak regions!")
   }
-  if (!is.logical(motif_only_for_id_x) || !is.logical(motif_only_for_id_y))
-  {
+  if (!is.logical(motif_only_for_id_x) || !is.logical(motif_only_for_id_y)) {
     stop("motif_only_for_id_x and motif_only_for_id_y should be either TRUE or FALSE (default)")
   }
-  if (!is.logical(methylation_profile_in_narrow_region))
-  {
+  if (!is.logical(methylation_profile_in_narrow_region)) {
     stop("methylation_profile_in_narrow_region should be either TRUE or FALSE (default)")
   }
-  if (!missing(external_source) && !is.data.frame(external_source))
-  {
+  if (!missing(external_source) && !is.data.frame(external_source)) {
     stop("external_source should be data.frame")
   }
-  if (motif_type != "MEME" && motif_type != "TRANSFAC")
-  {
+  if (motif_type != "MEME" && motif_type != "TRANSFAC") {
     stop("motif_type should be either 'MEME' (default) or 'TRANSFAC'!")
   }
 
   # if the external source is provided
   external_source_provided <- FALSE
-  if (!missing(external_source) && nrow(external_source) > 0)
-  {
+  if (!missing(external_source) && nrow(external_source) > 0) {
     external_source_provided <- TRUE
-    external_source_signal <- external_source[,seq(1,4,1)]
-    colnames(external_source_signal) <- c("chr","start","end","score")
+    external_source_signal <- external_source[, seq(1, 4, 1)]
+    colnames(external_source_signal) <- c("chr", "start", "end", "score")
     external_source_signal$id <- paste0("external_source_", rownames(external_source_signal))
     external_source_grange <- GRanges(external_source_signal$chr,
-                                      IRanges(external_source_signal$start+1,
+                                      IRanges(external_source_signal$start + 1,
                                               external_source_signal$end),
-                                      id=external_source_signal$id)
-  }
-
-  # check server location
-  if (server != "sg" && server != "ca")
-  {
-    stop("server should be either 'sg' (default) or 'ca'!")
+                                      id = external_source_signal$id)
   }
 
   # call API helper function
@@ -99,771 +86,95 @@ intersectPeakMatrix <- function(peak_id_x,
   check_db_file(local_db_path)
 
   message("TFregulomeR::intersectPeakMatrix() starting ... ...")
-  if (methylation_profile_in_narrow_region)
-  {
+  if (methylation_profile_in_narrow_region) {
     message("You chose to profile the methylation levels in 200bp window around peak summits, if there is any peak loaded from TFregulomeR. It will make the program slow. Disable it if you want a speedy analysis and do not care about methylation")
-  }
-  else
-  {
+  } else {
     message("You chose NOT to profile the methylation levels in 200bp window around peak summits")
   }
+
   # loading peak list x
-  message("Loading peak list x ... ...")
-  peak_list_x_all <- list()
-  # loading from TFregulomeR server
-  TFregulome_peak_x_id <- c()
-  is_x_TFregulome <- c()
-  peak_list_x_count <- 0
-  if (!missing(peak_id_x) && length(peak_id_x)>0)
-  {
-    message(paste0("... You have ", length(peak_id_x)," TFBS(s) requested to be loaded from TFregulomeR server"))
-    if (motif_only_for_id_x == TRUE)
-    {
-      message("... You chose to load TF peaks with motif only. Using 'motif_only_for_id_x' tunes your options")
-    }
-    else
-    {
-      message("... You chose to load TF peaks regardless of presence of motif. Using 'motif_only_for_id_x' tunes your options")
-    }
-    message("... loading TFBS(s) from TFregulomeR now")
-    for (i in peak_id_x)
-    {
-      peak_i <- suppressMessages(loadPeaks(id = i, includeMotifOnly = motif_only_for_id_x,
-                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                           local_db_path = local_db_path))
-      if (is.null(peak_i))
-      {
-        message(paste0("... ... NO peak file for your id '", i,"'."))
-      }
-      else
-      {
-        peak_list_x_count <- peak_list_x_count + 1
-        peak_list_x_all[[peak_list_x_count]] <- peak_i
-        is_x_TFregulome <- c(is_x_TFregulome, TRUE)
-        TFregulome_peak_x_id <- c(TFregulome_peak_x_id, i)
-        message(paste0("... ... peak file loaded successfully for id '", i,"'"))
-      }
-    }
-    message("... Done loading TFBS(s) from TFregulomeR")
-  }
-  # users' peaks
-  if (!missing(user_peak_list_x) && length(user_peak_list_x)>0)
-  {
-    message(paste0("... You have ",length(user_peak_list_x)," customised peak set(s)"))
-    if (missing(user_peak_x_id) || length(user_peak_x_id)!=length(user_peak_list_x) ||
-        length(unique(user_peak_x_id))!=length(user_peak_list_x))
-    {
-      message("... ... You didn't provide the ID for each customised peak set or your ID number does not uniquely equal to the input user peak number. Instead we will use 'user_peak_x1', 'user_peak_x2'..." )
-      user_peak_x_id <- paste0("user_peak_x", seq(1,length(user_peak_list_x), 1))
-    }
-    # new user peak x id in case that any input peak set is empty
-    user_peak_x_id_new <- c()
-    for (i in seq(1,length(user_peak_list_x),1))
-    {
-      peak_i <- user_peak_list_x[[i]]
-      if (nrow(peak_i) == 0)
-      {
-        message(paste0("... ... Your input peak set '",user_peak_x_id[i],"' is empty, so SKIP!"))
-      }
-      else
-      {
-        user_peak_x_id_new <- c(user_peak_x_id_new, user_peak_x_id[i])
-        colname_new <- colnames(peak_i)
-        colname_new[1] <- "chr"
-        colname_new[2] <- "start"
-        colname_new[3] <- "end"
-        # check if the input peak set has fourth column for id
-        no_id <- TRUE
-        if (length(colname_new) >= 4)
-        {
-          if (length(unique(peak_i[,4])) == nrow(peak_i))
-          {
-            colname_new[4] <- "id"
-            no_id <- FALSE
-          }
-        }
-        colnames(peak_i) <- colname_new
-        if (no_id)
-        {
-          peak_i$id <- paste0(user_peak_x_id[i], "_", as.vector(rownames(peak_i)))
-        }
-        peak_list_x_count <- peak_list_x_count + 1
-        peak_list_x_all[[peak_list_x_count]] <- peak_i
-        # test if user input id i match any TFregulomeR ID
-        motif_matrix_i <- suppressMessages(searchMotif(id = user_peak_x_id[i],
-                                                       TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                                       local_db_path = local_db_path))
-        if (is.null(motif_matrix_i))
-        {
-          is_x_TFregulome <- c(is_x_TFregulome, FALSE)
-        }
-        else
-        {
-          is_x_TFregulome <- c(is_x_TFregulome, TRUE)
-        }
-      }
-    }
-  }
-  else
-  {
-    user_peak_x_id_new <- c()
-  }
-  # combine TFregulomeR ID and user ID
-  peak_id_x_all <- c(TFregulome_peak_x_id, user_peak_x_id_new)
-
-  # loading  peak list y
-  message("Loading peak list y ... ...")
-  peak_list_y_all <- list()
-  # loading from TFregulomeR server
-  TFregulome_peak_y_id <- c()
-  is_y_TFregulome <- c()
-  peak_list_y_count <- 0
-  if (!missing(peak_id_y) && length(peak_id_y)>0)
-  {
-    message(paste0("... You have ", length(peak_id_y)," TFBS(s) requested to be loaded from TFregulomeR server"))
-    if (motif_only_for_id_y == TRUE)
-    {
-      message("... You chose to load TF peaks with motif only. Using 'motif_only_for_id_y' tunes your options")
-    }
-    else
-    {
-      message("... You chose to load TF peaks regardless of presence of motif. Using 'motif_only_for_id_y' tunes your options")
-    }
-    message("... loading TFBS(s) from TFregulomeR now")
-    for (i in peak_id_y)
-    {
-      peak_i <- suppressMessages(loadPeaks(id = i, includeMotifOnly = motif_only_for_id_y,
-                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                           local_db_path = local_db_path))
-      if (is.null(peak_i))
-      {
-        message(paste0("... ... NO peak file for your id '", i,"'."))
-      }
-      else
-      {
-        peak_list_y_count <- peak_list_y_count + 1
-        peak_list_y_all[[peak_list_y_count]] <- peak_i
-        is_y_TFregulome <- c(is_y_TFregulome, TRUE)
-        TFregulome_peak_y_id <- c(TFregulome_peak_y_id, i)
-        message(paste0("... ... peak file loaded successfully for id '", i,"'"))
-      }
-    }
-    message("... Done loading TFBS(s) from TFregulomeR")
-  }
-  # users' peaks
-  if (!missing(user_peak_list_y) && length(user_peak_list_y)>0)
-  {
-    message(paste0("... You have ",length(user_peak_list_y)," customised peak set(s)"))
-    if (missing(user_peak_y_id) || length(user_peak_y_id)!=length(user_peak_list_y) ||
-        length(unique(user_peak_y_id))!=length(user_peak_list_y))
-    {
-      message("... ... You didn't provide the ID for each customised peak set or your ID number does not uniquely equal to the input user peak number. Instead we will use 'user_peak_y1', 'user_peak_y2'..." )
-      user_peak_y_id <- paste0("user_peak_y", seq(1,length(user_peak_list_y), 1))
-    }
-    # new user peak y id in case that any input peak set is empty
-    user_peak_y_id_new <- c()
-    for (i in seq(1, length(user_peak_list_y), 1))
-    {
-      peak_i <- user_peak_list_y[[i]]
-      if (nrow(peak_i) == 0)
-      {
-        message(paste0("... ... Your input peak set '",user_peak_y_id[i],"' is empty, so SKIP!"))
-      }
-      else
-      {
-        user_peak_y_id_new <- c(user_peak_y_id_new, user_peak_y_id[i])
-        colname_new <- colnames(peak_i)
-        colname_new[1] <- "chr"
-        colname_new[2] <- "start"
-        colname_new[3] <- "end"
-        # check if the input peak set has fourth column for id
-        no_id <- TRUE
-        if (length(colname_new) >= 4)
-        {
-          if (length(unique(peak_i[,4])) == nrow(peak_i))
-          {
-            colname_new[4] <- "id"
-            no_id <- FALSE
-          }
-        }
-        colnames(peak_i) <- colname_new
-        if (no_id)
-        {
-          peak_i$id <- paste0(user_peak_y_id[i], "_", as.vector(rownames(peak_i)))
-        }
-        peak_list_y_count <- peak_list_y_count + 1
-        peak_list_y_all[[peak_list_y_count]] <- peak_i
-        # test if user input id i match any TFregulomeR ID
-        motif_matrix_i <- suppressMessages(searchMotif(id = user_peak_y_id[i],
-                                                       TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                                       local_db_path = local_db_path))
-        if (is.null(motif_matrix_i))
-        {
-          is_y_TFregulome <- c(is_y_TFregulome, FALSE)
-        }
-        else
-        {
-          is_y_TFregulome <- c(is_y_TFregulome, TRUE)
-        }
-      }
-    }
-  }
-  else
-  {
-    user_peak_y_id_new <- c()
-  }
-  # combine TFregulomeR ID and user ID
-  peak_id_y_all <- c(TFregulome_peak_y_id, user_peak_y_id_new)
-
+  peak_results_x <- load_peak_list(peak_id_x, "x", motif_only_for_id_x,
+                                   user_peak_list_x, user_peak_x_id,
+                                   TFregulome_url, local_db_path)
+  peak_id_x_all <- peak_results_x$peak_id_all
+  peak_list_x_all <- peak_results_x$peak_list_all
+  is_x_TFregulome <- peak_results_x$is_TFregulome
+  # loading peak list y
+  peak_results_y <- load_peak_list(peak_id_y, "y", motif_only_for_id_y,
+                                   user_peak_list_y, user_peak_y_id,
+                                   TFregulome_url, local_db_path)
+  peak_id_y_all <- peak_results_y$peak_id_all
+  peak_list_y_all <- peak_results_y$peak_list_all
+  is_y_TFregulome <- peak_results_y$is_TFregulome
 
   # check if peak list x is empty
-  if (length(peak_list_x_all)==0)
-  {
+  if (length(peak_list_x_all) == 0) {
     message("No input in the peak list x. Function ends here!")
     return(NULL)
   }
   # check if compared peak list is empty
-  if (length(peak_list_y_all)==0)
-  {
+  if (length(peak_list_y_all) == 0) {
     message("No input in the peak list y. Function ends here!")
     return(NULL)
   }
 
   # start analysing
   intersection_matrix <- list()
-  for (i in seq(1, length(peak_list_x_all), 1))
-  {
+  for (i in seq(1, length(peak_list_x_all), 1)) {
     id_x <- peak_id_x_all[i]
     message(paste0("Start analysing list x:", id_x, "... ..."))
     peak_x <- peak_list_x_all[[i]]
-    if (is_x_TFregulome[i])
-    {
-      isTFregulome_x <- TRUE
-      if (!is.null(local_db_path)) {
-        # make a request to the local database
-        request_content_df <- query_local_database(local_db_path,
-                                                   id = id_x)
-      }
-      else {
-        # make a json request to the API
-        request_content_json <- API_request(TFregulome_url,
-                                            id = id_x)
-        request_content_df <- as.data.frame(request_content_json$TFBS_records)
-      }
-      source_i <- request_content_df[,"source"]
-      if (source_i == "MethMotif")
-      {
-        isMethMotifID_x <- TRUE
-        motif_seq_path_x <- request_content_df[1,c("TFBS")]
-        meth_file_path_x <- request_content_df[1,c("DNA_methylation_profile")]
-        meth_file_200bp_path_x <- request_content_df[1,c("DNA_methylation_profile_200bp")]
-        WGBS_replicate_x <- request_content_df[1,c("WGBS_num")]
-      }
-      else
-      {
-        isMethMotifID_x <- FALSE
-        motif_seq_path_x <- request_content_df[1,c("TFBS")]
-      }
-    }
-    else
-    {
-      isTFregulome_x <- FALSE
-    }
+    isTFregulome_x <- is_x_TFregulome[i]
+    # fetch peak x info
+    x_peak_info <- fetch_peak_info(id_x, peak_x, isTFregulome_x,
+                                   TFregulome_url, local_db_path)
+    x_elements <- list(id = id_x, peak = peak_x, isTFregulome = isTFregulome_x)
+    x_info <- c(x_elements, x_peak_info)
+
     # start comparing with peak set y
-    for (j in seq(1, length(peak_list_y_all), 1))
-    {
+    for (j in seq(1, length(peak_list_y_all), 1)) {
+      y_info <- list()
       id_y <- peak_id_y_all[j]
       message(paste0("... ... Start analysing list y:", id_y))
       peak_y <- peak_list_y_all[[j]]
-      if (is_y_TFregulome[j])
-      {
-        isTFregulome_y <- TRUE
-        if (!is.null(local_db_path)) {
-          # make a request to the local database
-          request_content_df <- query_local_database(local_db_path,
-                                                     id = id_y)
-        }
-        else {
-          # make a json request to the API
-          request_content_json <- API_request(TFregulome_url,
-                                              id = id_y)
-          request_content_df <- as.data.frame(request_content_json$TFBS_records)
-        }
-        source_i <- request_content_df[,"source"]
-        if (source_i == "MethMotif")
-        {
-          isMethMotifID_y <- TRUE
-          motif_seq_path_y <- request_content_df[1,c("TFBS")]
-          meth_file_path_y <- request_content_df[1,c("DNA_methylation_profile")]
-          meth_file_200bp_path_y <- request_content_df[1,c("DNA_methylation_profile_200bp")]
-          WGBS_replicate_y <- request_content_df[1,c("WGBS_num")]
-        }
-        else
-        {
-          isMethMotifID_y <- FALSE
-          motif_seq_path_y <- request_content_df[1,c("TFBS")]
-        }
-      }
-      else
-      {
-        isTFregulome_y <- FALSE
-      }
-
-      # if peak x is from TRregulome database, extend peak regions by 100 bp
-      if (isTFregulome_x)
-      {
-        bed_x <- GRanges(peak_x$chr,
-                         IRanges(peak_x$start-99, peak_x$end+100),
-                         id=peak_x$id)
-      }
-      else
-      {
-        bed_x <- GRanges(peak_x$chr,
-                         IRanges(peak_x$start, peak_x$end),
-                         id=peak_x$id)
-      }
-      # if peak y is from MethMotif database, extend peak regions by 100 bp
-      if (isTFregulome_y)
-      {
-        bed_y <- GRanges(peak_y$chr,
-                         IRanges(peak_y$start-99, peak_y$end+100),
-                         id=peak_y$id)
-      }
-      else
-      {
-        bed_y <- GRanges(peak_y$chr,
-                         IRanges(peak_y$start, peak_y$end),
-                         id=peak_y$id)
-      }
+      isTFregulome_y <- is_y_TFregulome[j]
+      # fetch peak y info
+      y_peak_info <- fetch_peak_info(id_y, peak_y, isTFregulome_y,
+                                     TFregulome_url, local_db_path)
+      y_elements <- list(id = id_y, peak = peak_y,
+                         isTFregulome = isTFregulome_y)
+      y_info <- c(y_elements, y_peak_info)
 
       # get peak x which intersects with y
-      # subsetOverlaps may mis-think the two sets coming from different references, so suppressWarnings here
-      suppressWarnings(bedx_with_bedy <- subsetByOverlaps(bed_x, bed_y))
-      peakx_with_peaky <- unique(as.data.frame(bedx_with_bedy))
-      x_interect_percentage <- 100*nrow(peakx_with_peaky)/nrow(peak_x)
-      MethMotif_x <- new('MethMotif')
-      external_signal_in_x <- c("signal_number"=NA, "mean"=NA,"SD"=NA,"median"=NA,
-                                "quartile_25"=NA, "quartile_75"=NA)
-      tag_density_x <- c("peak_number"=NA, "mean"=NA,"SD"=NA,"median"=NA,
-                         "quartile_25"=NA, "quartile_75"=NA)
-      # collecting all CpG meth scores in the defined methylation profile area
-      meth_score_collection_x <- data.frame()
-      # methylation distribution only meaningful if we have WGBS and peaks
-      is_methProfile_meaningful_x <- FALSE
-
-      # form MethMotif object if the id is TFregulomeR id
-      if (isTFregulome_x)
-      {
-        motif_seq_x <- read.delim(motif_seq_path_x, sep = "\t", header = FALSE)
-        if (nrow(peakx_with_peaky) > 0)
-        {
-          ################## profile score for the external source ########################
-          if (external_source_provided)
-          {
-            suppressWarnings(external_signal_of_peakx_with_peaky_grange <- subsetByOverlaps(external_source_grange,
-                                                                                            bedx_with_bedy))
-            external_signal_of_peakx_with_peaky <- unique(as.data.frame(external_signal_of_peakx_with_peaky_grange))
-            if (nrow(external_signal_of_peakx_with_peaky) > 0)
-            {
-              external_signal_of_peakx_with_peaky_allInfo <- external_source_signal[which(external_source_signal$id
-                                                                                          %in% external_signal_of_peakx_with_peaky$id),]
-              if (nrow(external_signal_of_peakx_with_peaky_allInfo) > 0)
-              {
-                signal_num_x <- nrow(external_signal_of_peakx_with_peaky_allInfo)
-                signal_mean_x <- mean(external_signal_of_peakx_with_peaky_allInfo$score)
-                signal_sd_x <- sd(external_signal_of_peakx_with_peaky_allInfo$score)
-                signal_median_x <- median(external_signal_of_peakx_with_peaky_allInfo$score)
-                singal_quartile_x <-quantile(external_signal_of_peakx_with_peaky_allInfo$score)
-                singal_quartile_25_x <- as.numeric(singal_quartile_x[2])
-                singal_quartile_75_x <- as.numeric(singal_quartile_x[4])
-                external_signal_in_x <- c(signal_num_x,signal_mean_x,signal_sd_x,
-                                          signal_median_x,singal_quartile_25_x,singal_quartile_75_x)
-                names(external_signal_in_x) <- c("signal_number","mean","SD",
-                                                 "median","quartile_25","quartile_75")
-              }
-              else
-              {
-                external_signal_in_x <- c(0,0,0,0,0,0)
-                names(external_signal_in_x) <- c("signal_number","mean","SD",
-                                                 "median","quartile_25","quartile_75")
-              }
-            }
-          }
-
-          ################## profile score for the external source ########################
-
-          # tag fold change summary
-          peakx_with_peaky_all_Info <- peak_x[(peak_x$id %in% peakx_with_peaky$id), ]
-          if (ncol(peakx_with_peaky_all_Info) <= 4)
-          {
-            message(paste0("... ... ... Warning: ", id_x,
-                           " is derived from TFregulomeR but lack fifth 'read_fold_change' column. So skip read enrichment profiling !!"))
-          }
-          else if (!is.numeric(peakx_with_peaky_all_Info[,5]))
-          {
-            message(paste0("... ... ... Warning: ", id_x,
-                           " is derived from TFregulomeR and fifth column is supposed to be 'tag_old_change' but it's NOT numeric . So skip read enrichment profiling !!"))
-          }
-          else
-          {
-            tag_x_num <- nrow(peakx_with_peaky_all_Info)
-            tag_density_x_median <- median(peakx_with_peaky_all_Info[,5])
-            tag_density_x_mean <- mean(peakx_with_peaky_all_Info[,5])
-            tag_density_x_sd <- sd(peakx_with_peaky_all_Info[,5])
-            tag_density_x_quartile <- quantile(peakx_with_peaky_all_Info[,5])
-            tag_density_x_quartile_25 <- as.numeric(tag_density_x_quartile[2])
-            tag_density_x_quartile_75 <- as.numeric(tag_density_x_quartile[4])
-            tag_density_x <- c(tag_x_num, tag_density_x_mean, tag_density_x_sd,
-                               tag_density_x_median, tag_density_x_quartile_25,
-                               tag_density_x_quartile_75)
-            names(tag_density_x) <- c("peak_number","mean","SD",
-                                      "median","quartile_25","quartile_75")
-          }
-
-
-          #compute motif matrix
-          colnames(motif_seq_x) <- c("chr","start","end","strand","weight", "pvalue","qvalue","sequence")
-          motif_len_x <- nchar(as.character(motif_seq_x[1,"sequence"]))
-          motif_seq_x$id <- paste0(id_x,"_motif_sequence_", as.vector(rownames(motif_seq_x)))
-          motif_seq_x_grange <- GRanges(motif_seq_x$chr,
-                                        IRanges(motif_seq_x$start+1,
-                                                motif_seq_x$end),
-                                        id=motif_seq_x$id)
-          suppressWarnings(motif_of_peakx_with_peaky_grange <- subsetByOverlaps(motif_seq_x_grange, bedx_with_bedy))
-          motif_of_peakx_with_peaky <- unique(as.data.frame(motif_of_peakx_with_peaky_grange))
-          if (nrow(motif_of_peakx_with_peaky) > 0)
-          {
-            #nPeaks
-            suppressWarnings(peakx_with_peaky_with_motif_grange <- subsetByOverlaps(bedx_with_bedy, motif_seq_x_grange))
-            peakx_with_peaky_with_motif_df <- unique(as.data.frame(peakx_with_peaky_with_motif_grange))
-
-            motif_of_peakx_with_peaky_allInfo <- motif_seq_x[which(motif_seq_x$id %in% motif_of_peakx_with_peaky$id),]
-            motif_matrix_of_peakx_with_y <- formMatrixFromSeq(input_sequence = as.vector(motif_of_peakx_with_peaky_allInfo$sequence),
-                                                              motif_format = motif_type)
-
-            # compute beta score matrix,
-            if (isMethMotifID_x)
-            {
-              # methylation file can be empty
-              meth_level_x <- tryCatch(read.delim(meth_file_path_x, sep = "\t", header = FALSE),
-                                       error=function(e) data.frame())
-              # methylation file can be empty
-              if (nrow(meth_level_x)==0)
-              {
-                beta_score_matrix_of_peakx_with_y <- formBetaScoreFromSeq(input_meth = data.frame(),
-                                                                          WGBS_replicate = WGBS_replicate_x,
-                                                                          motif_len = motif_len_x)
-              }
-              else
-              {
-                colnames(meth_level_x) <- c("chr","start","end","meth_score","C_num","T_num","seq_chr","seq_start",
-                                            "seq_end","strand","weight","pvalue","qvalue","sequence")
-                meth_level_x$id <- paste0(id_x,"_motif_with_CG_", as.vector(rownames(meth_level_x)))
-                meth_level_x_grange <- GRanges(meth_level_x$seq_chr,
-                                               IRanges(meth_level_x$seq_start,
-                                                       meth_level_x$seq_end),
-                                               id=meth_level_x$id)
-                suppressWarnings(meth_level_x_with_y <- unique(as.data.frame(subsetByOverlaps(meth_level_x_grange, motif_of_peakx_with_peaky_grange))))
-                meth_level_x_with_y_allInfo <- meth_level_x[which(meth_level_x$id %in% meth_level_x_with_y$id),]
-                beta_score_matrix_of_peakx_with_y <- formBetaScoreFromSeq(input_meth = meth_level_x_with_y_allInfo,
-                                                                          WGBS_replicate = WGBS_replicate_x,
-                                                                          motif_len = motif_len_x)
-              }
-            }
-            else
-            {
-              beta_score_matrix_of_peakx_with_y <- as.matrix(NA)
-            }
-
-            if (motif_type == "TRANSFAC")
-            {
-              version_x <- 0
-            }
-            else
-            {
-              version_x <- 4
-            }
-            MethMotif_x@MMmotif <- updateMMmotif(MethMotif_x@MMmotif,
-                                                 motif_format = motif_type,
-                                                 version = version_x,
-                                                 background = c("A"=0.25,"C"=0.25,"G"=0.25,"T"=0.25),
-                                                 id = paste0(id_x,"_overlapped_with_", id_y),
-                                                 width = motif_len_x,
-                                                 nsites=nrow(motif_of_peakx_with_peaky),
-                                                 nPeaks=nrow(peakx_with_peaky_with_motif_df),
-                                                 motif_matrix=motif_matrix_of_peakx_with_y)
-            MethMotif_x@MMBetaScore <- beta_score_matrix_of_peakx_with_y
-          }
-
-          # collecting CpG in x peaks that overlap with y peaks
-          if (methylation_profile_in_narrow_region)
-          {
-            ### if in 200bp around peaks
-            if (isMethMotifID_x)
-            {
-              is_methProfile_meaningful_x <- TRUE
-              meth_level_200bp_x <- tryCatch(read.delim(meth_file_200bp_path_x, sep = "\t", header = FALSE),
-                                                  error=function(e) data.frame())
-              if (nrow(meth_level_200bp_x) > 0)
-              {
-                colnames(meth_level_200bp_x) <- c("chr","start","end",
-                                                       "meth_score","C_num","T_num")
-                meth_level_200bp_x$id <- paste0("200bp_CG_", as.vector(rownames(meth_level_200bp_x)))
-                meth_level_200bp_x_grange <- GRanges(meth_level_200bp_x$chr,
-                                                     IRanges(meth_level_200bp_x$start,
-                                                             meth_level_200bp_x$end),
-                                                     id=meth_level_200bp_x$id)
-                suppressWarnings(meth_level_in_peakx_200bp <- unique(as.data.frame(subsetByOverlaps(meth_level_200bp_x_grange,
-                                                                                                    bedx_with_bedy))))
-                meth_level_in_peakx_200bp_allInfo <- unique(meth_level_200bp_x[which(meth_level_200bp_x$id
-                                                                                     %in% meth_level_in_peakx_200bp$id),])
-                meth_score_collection_x <- rbind(meth_score_collection_x,
-                                               meth_level_in_peakx_200bp_allInfo[,c("chr","start","end","meth_score","C_num","T_num")])
-              }
-            }
-          }
-        }
-      }
-      # form methylation score profile - distribution for peak x
-      if (is_methProfile_meaningful_x)
-      {
-        if (nrow(meth_score_collection_x)>0)
-        {
-          meth_score_distri_target_x <- formBetaScoreDistri(input_meth = as.data.frame(meth_score_collection_x$meth_score))
-        }
-        else
-        {
-          meth_score_distri_target_x <- formBetaScoreDistri(input_meth = data.frame())
-        }
-      }
-      else
-      {
-        meth_score_distri_target_x <- matrix()
-      }
+      x_intersect_info <- intersect_peak_regions(x_info, y_info, external_source_provided, external_source_grange, external_source_signal, motif_type, methylation_profile_in_narrow_region)
+      x_of_y_info <- c(x_info, x_intersect_info)
 
       # get peak y which intersects with x
-      suppressWarnings(bedy_with_bedx <- subsetByOverlaps(bed_y, bed_x))
-      peaky_with_peakx <- unique(as.data.frame(bedy_with_bedx))
-      y_interect_percentage <- 100*nrow(peaky_with_peakx)/nrow(peak_y)
-      MethMotif_y <- new('MethMotif')
-      external_signal_in_y <- c("signal_number"=NA, "mean"=NA,"SD"=NA,"median"=NA,
-                                "quartile_25"=NA, "quartile_75"=NA)
-      tag_density_y <- c("peak_number"=NA, "mean"=NA,"SD"=NA,"median"=NA,
-                         "quartile_25"=NA, "quartile_75"=NA)
-      # collecting all CpG meth scores in the defined methylation profile area
-      meth_score_collection_y <- data.frame()
-      # methylation distribution only meaningful if we have WGBS and peaks
-      is_methProfile_meaningful_y <- FALSE
-      # form MethMotif object if the id is TFregulomeR id
-      if (isTFregulome_y)
-      {
-        motif_seq_y <- read.delim(motif_seq_path_y, sep = "\t", header = FALSE)
-        if (nrow(peaky_with_peakx) > 0)
-        {
-          ################## profile score for the external source ########################
-
-          if (external_source_provided)
-          {
-            suppressWarnings(external_signal_of_peaky_with_peakx_grange <- subsetByOverlaps(external_source_grange,
-                                                                                            bedy_with_bedx))
-            external_signal_of_peaky_with_peakx <- unique(as.data.frame(external_signal_of_peaky_with_peakx_grange))
-            if (nrow(external_signal_of_peaky_with_peakx) > 0)
-            {
-              external_signal_of_peaky_with_peakx_allInfo <- external_source_signal[which(external_source_signal$id
-                                                                                          %in% external_signal_of_peaky_with_peakx$id),]
-              if (nrow(external_signal_of_peaky_with_peakx_allInfo) > 0)
-              {
-                signal_num_y <- nrow(external_signal_of_peaky_with_peakx_allInfo)
-                signal_mean_y <- mean(external_signal_of_peaky_with_peakx_allInfo$score)
-                signal_sd_y <- sd(external_signal_of_peaky_with_peakx_allInfo$score)
-                signal_median_y <- median(external_signal_of_peaky_with_peakx_allInfo$score)
-                singal_quartile_y <-quantile(external_signal_of_peaky_with_peakx_allInfo$score)
-                singal_quartile_25_y <- as.numeric(singal_quartile_y[2])
-                singal_quartile_75_y <- as.numeric(singal_quartile_y[4])
-                external_signal_in_y <- c(signal_num_y,signal_mean_y,signal_sd_y,
-                                          signal_median_y,singal_quartile_25_y,singal_quartile_75_y)
-                names(external_signal_in_y) <- c("signal_number","mean","SD",
-                                                 "median","quartile_25","quartile_75")
-              }
-              else
-              {
-                external_signal_in_y <- c(0,0,0,0,0,0)
-                names(external_signal_in_y) <- c("signal_number","mean","SD",
-                                                 "median","quartile_25","quartile_75")
-              }
-            }
-          }
-
-          ################## profile score for the external source ########################
-
-          # tag fold change summary
-          peaky_with_peakx_all_Info <- peak_y[(peak_y$id %in% peaky_with_peakx$id), ]
-          if (ncol(peaky_with_peakx_all_Info) <= 4)
-          {
-            message(paste0("... ... ... Warning: ", id_y,
-                           " is derived from TFregulomeR but lack fifth 'read_fold_change' column. So skip read profiling !!"))
-          }
-          else if (!is.numeric(peaky_with_peakx_all_Info[,5]))
-          {
-            message(paste0("... ... ... Warning: ", id_y,
-                           " is derived from TFregulomeR and fifth column is supposed to be 'tag_old_change' but it's NOT numeric. So skip read profiling !!"))
-          }
-          else
-          {
-            tag_y_num <- nrow(peaky_with_peakx_all_Info)
-            tag_density_y_median <- median(peaky_with_peakx_all_Info[,5])
-            tag_density_y_mean <- mean(peaky_with_peakx_all_Info[,5])
-            tag_density_y_sd <- sd(peaky_with_peakx_all_Info[,5])
-            tag_density_y_quartile <- quantile(peaky_with_peakx_all_Info[,5])
-            tag_density_y_quartile_25 <- as.numeric(tag_density_y_quartile[2])
-            tag_density_y_quartile_75 <- as.numeric(tag_density_y_quartile[4])
-            tag_density_y <- c(tag_y_num, tag_density_y_mean, tag_density_y_sd,
-                               tag_density_y_median, tag_density_y_quartile_25,
-                               tag_density_y_quartile_75)
-            names(tag_density_y) <- c("peak_number","mean","SD",
-                                      "median","quartile_25","quartile_75")
-
-          }
-
-          #compute motif matrix
-          colnames(motif_seq_y) <- c("chr","start","end","strand","weight", "pvalue","qvalue","sequence")
-          motif_len_y <- nchar(as.character(motif_seq_y[1,"sequence"]))
-          motif_seq_y$id <- paste0(id_y,"_motif_sequence_", as.vector(rownames(motif_seq_y)))
-          motif_seq_y_grange <- GRanges(motif_seq_y$chr,
-                                        IRanges(motif_seq_y$start+1,
-                                                motif_seq_y$end),
-                                        id=motif_seq_y$id)
-          suppressWarnings(motif_of_peaky_with_peakx_grange <- subsetByOverlaps(motif_seq_y_grange, bedy_with_bedx))
-          motif_of_peaky_with_peakx <- unique(as.data.frame(motif_of_peaky_with_peakx_grange))
-          if (nrow(motif_of_peaky_with_peakx) > 0)
-          {
-            #nPeaks
-            suppressWarnings(peaky_with_peakx_with_motif_grange <- subsetByOverlaps(bedy_with_bedx, motif_seq_y_grange))
-            peaky_with_peakx_with_motif_df <- unique(as.data.frame(peaky_with_peakx_with_motif_grange))
-
-            motif_of_peaky_with_peakx_allInfo <- motif_seq_y[which(motif_seq_y$id %in% motif_of_peaky_with_peakx$id),]
-            motif_matrix_of_peaky_with_x <- formMatrixFromSeq(input_sequence = as.vector(motif_of_peaky_with_peakx_allInfo$sequence),
-                                                              motif_format = motif_type)
-
-            # compute beta score matrix,
-            if (isMethMotifID_y)
-            {
-              # methylation file can be empty
-              meth_level_y <- tryCatch(read.delim(meth_file_path_y, sep = "\t", header = FALSE),
-                                       error=function(e) data.frame())
-              # methylation file can be empty
-              if (nrow(meth_level_y)==0)
-              {
-                beta_score_matrix_of_peaky_with_x <- formBetaScoreFromSeq(input_meth = data.frame(),
-                                                                          WGBS_replicate = WGBS_replicate_y,
-                                                                          motif_len = motif_len_y)
-              }
-              else
-              {
-                colnames(meth_level_y) <- c("chr","start","end","meth_score","C_num","T_num","seq_chr","seq_start",
-                                            "seq_end","strand","weight","pvalue","qvalue","sequence")
-                meth_level_y$id <- paste0(id_y,"_motif_with_CG_", as.vector(rownames(meth_level_y)))
-                meth_level_y_grange <- GRanges(meth_level_y$seq_chr,
-                                               IRanges(meth_level_y$seq_start,
-                                                       meth_level_y$seq_end),
-                                               id=meth_level_y$id)
-                suppressWarnings(meth_level_y_with_x <- unique(as.data.frame(subsetByOverlaps(meth_level_y_grange, motif_of_peaky_with_peakx_grange))))
-                meth_level_y_with_x_allInfo <- meth_level_y[which(meth_level_y$id %in% meth_level_y_with_x$id),]
-                beta_score_matrix_of_peaky_with_x <- formBetaScoreFromSeq(input_meth = meth_level_y_with_x_allInfo,
-                                                                          WGBS_replicate = WGBS_replicate_y,
-                                                                          motif_len = motif_len_y)
-              }
-            }
-            else
-            {
-              beta_score_matrix_of_peaky_with_x <- as.matrix(NA)
-            }
-
-            if (motif_type == "TRANSFAC")
-            {
-              version_y <- 0
-            }
-            else
-            {
-              version_y <- 4
-            }
-            MethMotif_y@MMmotif <- updateMMmotif(MethMotif_y@MMmotif,
-                                                 motif_format = motif_type,
-                                                 version = version_y,
-                                                 background = c("A"=0.25,"C"=0.25,"G"=0.25,"T"=0.25),
-                                                 id = paste0(id_y,"_overlapped_with_", id_x),
-                                                 width = motif_len_y,
-                                                 nsites=nrow(motif_of_peaky_with_peakx),
-                                                 nPeaks=nrow(peaky_with_peakx_with_motif_df),
-                                                 motif_matrix=motif_matrix_of_peaky_with_x)
-            MethMotif_y@MMBetaScore <- beta_score_matrix_of_peaky_with_x
-          }
-
-          # collecting CpG in y peaks that overlap with x peaks
-          if (methylation_profile_in_narrow_region)
-          {
-            ### if in 200bp around peaks
-            if (isMethMotifID_y)
-            {
-              is_methProfile_meaningful_y <- TRUE
-              meth_level_200bp_y <- tryCatch(read.delim(meth_file_200bp_path_y, sep = "\t", header = FALSE),
-                                             error=function(e) data.frame())
-              if (nrow(meth_level_200bp_y) > 0)
-              {
-                colnames(meth_level_200bp_y) <- c("chr","start","end",
-                                                  "meth_score","C_num","T_num")
-                meth_level_200bp_y$id <- paste0("200bp_CG_", as.vector(rownames(meth_level_200bp_y)))
-                meth_level_200bp_y_grange <- GRanges(meth_level_200bp_y$chr,
-                                                     IRanges(meth_level_200bp_y$start,
-                                                             meth_level_200bp_y$end),
-                                                     id=meth_level_200bp_y$id)
-                suppressWarnings(meth_level_in_peaky_200bp <- unique(as.data.frame(subsetByOverlaps(meth_level_200bp_y_grange,
-                                                                                                    bedy_with_bedx))))
-                meth_level_in_peaky_200bp_allInfo <- unique(meth_level_200bp_y[which(meth_level_200bp_y$id
-                                                                                     %in% meth_level_in_peaky_200bp$id),])
-                meth_score_collection_y <- rbind(meth_score_collection_y,
-                                               meth_level_in_peaky_200bp_allInfo[,c("chr","start","end","meth_score","C_num","T_num")])
-              }
-            }
-          }
-        }
-      }
-      # form methylation score profile - distribution
-      if (is_methProfile_meaningful_y)
-      {
-        if (nrow(meth_score_collection_y)>0)
-        {
-          meth_score_distri_target_y <- formBetaScoreDistri(input_meth = as.data.frame(meth_score_collection_y$meth_score))
-        }
-        else
-        {
-          meth_score_distri_target_y <- formBetaScoreDistri(input_meth = data.frame())
-        }
-      }
-      else
-      {
-        meth_score_distri_target_y <- matrix()
-      }
+      y_intersect_info <- intersect_peak_regions(y_info, x_info, external_source_provided, external_source_grange, external_source_signal, motif_type, methylation_profile_in_narrow_region)
+      y_of_x_info <- c(y_info, y_intersect_info)
 
       #form an IntersectPeakMatrix object
+      intersect_id <- paste0(id_x, "_[AND]_", id_y)
       new_IntersectPeakMatrix <- new("IntersectPeakMatrix")
-      new_IntersectPeakMatrix <- updateIntersectPeakMatrix(theObject = new_IntersectPeakMatrix,
-                                                           id = paste0(id_x,"_[AND]_",id_y),
-                                                           id_x = id_x,
-                                                           overlap_percentage_x = x_interect_percentage,
-                                                           isxTFregulomeID = isTFregulome_x,
-                                                           MethMotif_x = MethMotif_x,
-                                                           methylation_profile_x = meth_score_distri_target_x,
-                                                           external_signal_x = external_signal_in_x,
-                                                           tag_density_x = tag_density_x,
-                                                           id_y = id_y,
-                                                           overlap_percentage_y = y_interect_percentage,
-                                                           isyTFregulomeID = isTFregulome_y,
-                                                           MethMotif_y = MethMotif_y,
-                                                           methylation_profile_y = meth_score_distri_target_y,
-                                                           external_signal_y = external_signal_in_y,
-                                                           tag_density_y = tag_density_y)
-      intersection_matrix[[paste0(id_x,"_[AND]_",id_y)]] <- new_IntersectPeakMatrix
+      new_IntersectPeakMatrix <- updateIntersectPeakMatrix(
+        theObject = new_IntersectPeakMatrix,
+        id = intersect_id,
+        id_x = id_x,
+        overlap_percentage_x = x_of_y_info$intersect_percentage,
+        isxTFregulomeID = isTFregulome_x,
+        MethMotif_x = x_of_y_info$MethMotif,
+        methylation_profile_x = x_of_y_info$meth_score_distri_target,
+        external_signal_x = x_of_y_info$external_signal_in,
+        tag_density_x = x_of_y_info$tag_density,
+        id_y = id_y,
+        overlap_percentage_y = y_of_x_info$intersect_percentage,
+        isyTFregulomeID = isTFregulome_y,
+        MethMotif_y = y_of_x_info$MethMotif,
+        methylation_profile_y = y_of_x_info$meth_score_distri_target,
+        external_signal_y = y_of_x_info$external_signal_in,
+        tag_density_y = y_of_x_info$tag_density
+      )
+      intersection_matrix[[intersect_id]] <- new_IntersectPeakMatrix
     }
   }
   intersection_matrix_matrix <- matrix(intersection_matrix,
@@ -873,6 +184,338 @@ intersectPeakMatrix <- function(peak_id_x,
   rownames(intersection_matrix_matrix) <- c(peak_id_x_all)
   colnames(intersection_matrix_matrix) <- c(peak_id_y_all)
   return(intersection_matrix_matrix)
+}
+
+
+load_peak_list <- function(peak_id, direction, motif_only, user_peak_list,
+                           user_peak_id, TFregulome_url, local_db_path) {
+  message(paste0("Loading peak list ", direction, " ... ..."))
+  peak_list_all <- list()
+  # loading from TFregulomeR server
+  TFregulome_peak_id <- c()
+  is_TFregulome <- c()
+  peak_list_count <- 0
+  if (!missing(peak_id) && length(peak_id) > 0) {
+    message(paste0("... You have ", length(peak_id)," TFBS(s) requested to be loaded from TFregulomeR server"))
+    if (motif_only == TRUE) {
+      message(paste0("... You chose to load TF peaks with motif only. Using 'motif_only_for_id_", direction, "' tunes your options"))
+    } else {
+      message(paste0("... You chose to load TF peaks regardless of presence of motif. Using 'motif_only_for_id_", direction, "' tunes your options"))
+    }
+    message("... loading TFBS(s) from TFregulomeR now")
+    for (i in peak_id) {
+      peak_i <- suppressMessages(loadPeaks(id = i, includeMotifOnly = motif_only,
+                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
+                                           local_db_path = local_db_path))
+      if (is.null(peak_i)) {
+        message(paste0("... ... NO peak file for your id '", i, "'."))
+      } else {
+        peak_list_count <- peak_list_count + 1
+        peak_list_all[[peak_list_count]] <- peak_i
+        is_TFregulome <- c(is_TFregulome, TRUE)
+        TFregulome_peak_id <- c(TFregulome_peak_id, i)
+        message(paste0("... ... peak file loaded successfully for id '", i, "'"))
+      }
+    }
+    message("... Done loading TFBS(s) from TFregulomeR")
+  }
+  # users' peaks
+  if (!missing(user_peak_list) && length(user_peak_list) > 0) {
+    message(paste0("... You have ",length(user_peak_list)," customised peak set(s)"))
+    if (missing(user_peak_id) || length(user_peak_id) != length(user_peak_list) ||
+        length(unique(user_peak_id)) != length(user_peak_list)) {
+      message(paste0("... ... You didn't provide the ID for each customised peak set or your ID number does not uniquely equal to the input user peak number. Instead we will use 'user_peak_", direction, "1', 'user_peak_", direction, "2'..."))
+      user_peak_id <- paste0("user_peak_", direction, seq(1,length(user_peak_list), 1))
+    }
+    # new user peak x id in case that any input peak set is empty
+    user_peak_id_new <- c()
+    for (i in seq(1, length(user_peak_list), 1)) {
+      user_peak_i <- user_peak_list[[i]]
+      if (nrow(user_peak_i) == 0) {
+        message(paste0("... ... Your input peak set '",user_peak_id[i],"' is empty, so SKIP!"))
+      } else {
+        user_peak_id_new <- c(user_peak_id_new, user_peak_id[i])
+        colname_new <- colnames(user_peak_i)
+        colname_new[1] <- "chr"
+        colname_new[2] <- "start"
+        colname_new[3] <- "end"
+        # check if the input peak set has fourth column for id
+        no_id <- TRUE
+        if (length(colname_new) >= 4) {
+          if (length(unique(user_peak_i[, 4])) == nrow(user_peak_i)) {
+            colname_new[4] <- "id"
+            no_id <- FALSE
+          }
+        }
+        colnames(user_peak_i) <- colname_new
+        if (no_id) {
+          user_peak_i$id <- paste0(user_peak_id[i], "_", as.vector(rownames(user_peak_i)))
+        }
+        peak_list_count <- peak_list_count + 1
+        peak_list_all[[peak_list_count]] <- user_peak_i
+        # test if user input id i match any TFregulomeR ID
+        motif_matrix_i <- suppressMessages(searchMotif(id = user_peak_id[i],
+                                                       TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
+                                                       local_db_path = local_db_path))
+        if (is.null(motif_matrix_i)) {
+          is_TFregulome <- c(is_TFregulome, FALSE)
+        } else {
+          is_TFregulome <- c(is_TFregulome, TRUE)
+        }
+      }
+    }
+  } else {
+    user_peak_id_new <- c()
+  }
+  # combine TFregulomeR ID and user ID
+  peak_id_all <- c(TFregulome_peak_id, user_peak_id_new)
+
+  # output
+  peak_output <- list(peak_id_all = peak_id_all, peak_list_all = peak_list_all, is_TFregulome = is_TFregulome)
+  return(peak_output)
+}
+
+
+fetch_peak_info <- function(id, peak, isTFregulome, TFregulome_url, local_db_path) {
+  if (isTFregulome) {
+
+    # rework the API system, build an object and pass it around instead of all this variable passing
+
+
+    if (!is.null(local_db_path)) {
+      # make a request to the local database
+      request_content_df <- query_local_database(local_db_path, id = id)
+    } else {
+      # make a json request to the API
+      request_content_json <- API_request(TFregulome_url, id = id)
+      request_content_df <- as.data.frame(request_content_json$TFBS_records)
+    }
+    source_i <- request_content_df[, "source"]
+    if (source_i == "MethMotif") {
+      isMethMotifID <- TRUE
+      motif_seq_path <- request_content_df[1, c("TFBS")]
+      meth_file_path <- request_content_df[1, c("DNA_methylation_profile")]
+      meth_file_200bp_path <- request_content_df[1, c("DNA_methylation_profile_200bp")]
+      WGBS_replicate <- request_content_df[1, c("WGBS_num")]
+      peak_info <- list(isMethMotifID = isMethMotifID, motif_seq_path = motif_seq_path, meth_file_path = meth_file_path, meth_file_200bp_path = meth_file_200bp_path, WGBS_replicate = WGBS_replicate)
+    } else {
+      isMethMotifID_x <- FALSE
+      motif_seq_path_x <- request_content_df[1,c("TFBS")]
+      peak_info <- list(isMethMotifID = isMethMotifID, motif_seq_path = motif_seq_path)
+    }
+
+    # if peak x is from TFregulome database, extend peak regions by 100 bp
+    peak$start <- peak$start - 99
+    peak$end <- peak$end + 100
+  }
+
+  bed <- GRanges(peak$chr,
+                 IRanges(peak$start, peak$end),
+                 id = peak$id)
+  peak_info[["bed"]] <- bed
+
+  return(peak_info)
+}
+
+
+intersect_peak_regions <- function(x_info, y_info, external_source_provided, external_source_grange, external_source_signal, motif_type, methylation_profile_in_narrow_region) {
+  # subsetOverlaps may mis-think the two sets coming from different references, so suppressWarnings here
+  suppressWarnings(bedx_with_bedy <- subsetByOverlaps(x_info$bed, y_info$bed))
+  peakx_with_peaky <- unique(as.data.frame(bedx_with_bedy))
+  x_intersect_percentage <- 100 * nrow(peakx_with_peaky) / nrow(x_info$peak)
+  MethMotif_x <- new('MethMotif')
+  external_signal_in_x <- c(
+    "signal_number" = NA, "mean" = NA, "SD" = NA,
+    "median" = NA, "quartile_25" = NA, "quartile_75" = NA
+  )
+  tag_density_x <- c(
+    "peak_number" = NA, "mean" = NA, "SD" = NA, "median" = NA,
+    "quartile_25" = NA, "quartile_75" = NA
+  )
+  # collecting all CpG meth scores in the defined methylation profile area
+  meth_score_collection_x <- data.frame()
+  # methylation distribution only meaningful if we have WGBS and peaks
+  is_methProfile_meaningful_x <- FALSE
+
+  # form MethMotif object if the id is TFregulomeR id
+  if (x_info$isTFregulome && nrow(peakx_with_peaky) > 0) {
+    ################## profile score for the external source ########################
+    if (external_source_provided) {
+      suppressWarnings(external_signal_of_peakx_with_peaky_grange <- subsetByOverlaps(external_source_grange, bedx_with_bedy))
+      external_signal_of_peakx_with_peaky <- unique(as.data.frame(external_signal_of_peakx_with_peaky_grange))
+      if (nrow(external_signal_of_peakx_with_peaky) > 0) {
+        external_signal_of_peakx_with_peaky_allInfo <- external_source_signal[which(external_source_signal$id %in% external_signal_of_peakx_with_peaky$id), ]
+        external_signal_in_x <- c(0, 0, 0, 0, 0, 0)
+        names(external_signal_in_x) <- c("signal_number", "mean", "SD",
+                                          "median", "quartile_25",
+                                          "quartile_75")
+        if (nrow(external_signal_of_peakx_with_peaky_allInfo) > 0) {
+          signal_num_x <- nrow(external_signal_of_peakx_with_peaky_allInfo)
+          signal_mean_x <- mean(external_signal_of_peakx_with_peaky_allInfo$score)
+          signal_sd_x <- sd(external_signal_of_peakx_with_peaky_allInfo$score)
+          signal_median_x <- median(external_signal_of_peakx_with_peaky_allInfo$score)
+          singal_quartile_x <-quantile(external_signal_of_peakx_with_peaky_allInfo$score)
+          singal_quartile_25_x <- as.numeric(singal_quartile_x[2])
+          singal_quartile_75_x <- as.numeric(singal_quartile_x[4])
+          external_signal_in_x <- c(signal_num_x,signal_mean_x, signal_sd_x,
+                                    signal_median_x, singal_quartile_25_x,
+                                    singal_quartile_75_x)
+        }
+      }
+    }
+    ################## profile score for the external source ########################
+
+    # tag fold change summary
+    peakx_with_peaky_all_Info <- x_info$peak[(x_info$peak$id %in% peakx_with_peaky$id), ]
+    if (ncol(peakx_with_peaky_all_Info) <= 4) {
+      message(paste0("... ... ... Warning: ", x_info$id, " is derived from TFregulomeR but lack fifth 'read_fold_change' column. So skip read enrichment profiling !!"))
+    } else if (!is.numeric(peakx_with_peaky_all_Info[, 5])) {
+      message(paste0("... ... ... Warning: ", x_info$id, " is derived from TFregulomeR and fifth column is supposed to be 'tag_old_change' but it's NOT numeric . So skip read enrichment profiling !!"))
+    } else {
+      tag_x_num <- nrow(peakx_with_peaky_all_Info)
+      tag_density_x_median <- median(peakx_with_peaky_all_Info[, 5])
+      tag_density_x_mean <- mean(peakx_with_peaky_all_Info[, 5])
+      tag_density_x_sd <- sd(peakx_with_peaky_all_Info[, 5])
+      tag_density_x_quartile <- quantile(peakx_with_peaky_all_Info[, 5])
+      tag_density_x_quartile_25 <- as.numeric(tag_density_x_quartile[2])
+      tag_density_x_quartile_75 <- as.numeric(tag_density_x_quartile[4])
+      tag_density_x <- c(tag_x_num, tag_density_x_mean, tag_density_x_sd,
+                          tag_density_x_median, tag_density_x_quartile_25,
+                          tag_density_x_quartile_75)
+      names(tag_density_x) <- c("peak_number", "mean", "SD",
+                                "median", "quartile_25", "quartile_75")
+    }
+
+    # compute motif matrix
+    motif_seq_x <- read.delim(x_info$motif_seq_path, sep = "\t", header = FALSE)
+    colnames(motif_seq_x) <- c("chr", "start", "end", "strand", "weight",
+                               "pvalue", "qvalue", "sequence")
+    motif_len_x <- nchar(as.character(motif_seq_x[1, "sequence"]))
+    motif_seq_x$id <- paste0(x_info$id,
+                             "_motif_sequence_",
+                             as.vector(rownames(motif_seq_x)))
+    motif_seq_x_grange <- GRanges(motif_seq_x$chr,
+                                  IRanges(motif_seq_x$start + 1,
+                                          motif_seq_x$end),
+                                  id = motif_seq_x$id,
+                                  pvalue = motif_seq_x$pvalue,
+                                  sequence = motif_seq_x$sequence)
+    suppressWarnings(
+      motif_of_peakx_with_peaky_grange <- subsetByOverlaps(motif_seq_x_grange, bedx_with_bedy)
+    )
+    motif_of_peakx_with_peaky_overlap <- findOverlaps(motif_seq_x_grange,
+                                                      bedx_with_bedy,
+                                                      select = "first")
+    mcols(motif_seq_x_grange)$peak_id <- mcols(bedx_with_bedy)$id[motif_of_peakx_with_peaky_overlap]
+    motif_seq_x_with_peak_id <- as.data.frame(motif_seq_x_grange)
+    motif_of_peakx_with_peaky_df <- motif_seq_x_with_peak_id %>%
+      dplyr::filter(!is.na(peak_id)) %>%
+      dplyr::arrange(pvalue) %>%
+      dplyr::distinct(peak_id, .keep_all = TRUE)
+    if (nrow(motif_of_peakx_with_peaky_df) > 0) {
+      #nPeaks
+      motif_matrix_of_peakx_with_y <- formMatrixFromSeq(input_sequence = as.vector(motif_of_peakx_with_peaky_df$sequence), motif_format = motif_type)
+
+      # compute beta score matrix,
+      if (x_info$isMethMotifID) {
+        # methylation file can be empty
+        meth_level_x <- tryCatch(
+                          read.delim(
+                            x_info$meth_file_path,
+                            sep = "\t", header = FALSE
+                          ),
+                        error = function(e) data.frame())
+        # methylation file can be empty
+        if (nrow(meth_level_x) == 0) {
+          beta_score_matrix_of_peakx_with_y <- formBetaScoreFromSeq(
+            input_meth = data.frame(),
+            WGBS_replicate = x_info$WGBS_replicate,
+            motif_len = motif_len_x
+          )
+        } else {
+          colnames(meth_level_x) <- c("chr", "start", "end", "meth_score",
+                                      "C_num", "T_num", "seq_chr", "seq_start",
+                                      "seq_end", "strand", "weight", "pvalue",
+                                      "qvalue", "sequence")
+          meth_level_x$id <- paste0(x_info$id,"_motif_with_CG_", as.vector(rownames(meth_level_x)))
+          meth_level_x_grange <- GRanges(meth_level_x$seq_chr,
+                                          IRanges(meth_level_x$seq_start,
+                                                  meth_level_x$seq_end),
+                                          id=meth_level_x$id)
+          suppressWarnings(meth_level_x_with_y <- unique(as.data.frame(subsetByOverlaps(meth_level_x_grange, motif_of_peakx_with_peaky_grange))))
+          meth_level_x_with_y_allInfo <- meth_level_x[which(meth_level_x$id %in% meth_level_x_with_y$id), ]
+          beta_score_matrix_of_peakx_with_y <- formBetaScoreFromSeq(
+            input_meth = meth_level_x_with_y_allInfo,
+            WGBS_replicate = x_info$WGBS_replicate,
+            motif_len = motif_len_x
+          )
+        }
+      } else {
+        beta_score_matrix_of_peakx_with_y <- as.matrix(NA)
+      }
+
+      if (motif_type == "TRANSFAC") {
+        version_x <- 0
+      } else {
+        version_x <- 4
+      }
+      MethMotif_x@MMmotif <- updateMMmotif(
+        MethMotif_x@MMmotif,
+        motif_format = motif_type,
+        version = version_x,
+        background = c("A" = 0.25, "C" = 0.25, "G" = 0.25, "T" = 0.25),
+        id = paste0(x_info$id, "_overlapped_with_", y_info$id),
+        width = motif_len_x,
+        nsites = length(motif_of_peakx_with_peaky_grange),
+        nPeaks = length(bedx_with_bedy),
+        motif_matrix = motif_matrix_of_peakx_with_y
+      )
+      MethMotif_x@MMBetaScore <- beta_score_matrix_of_peakx_with_y
+    }
+
+    # collecting CpG in x peaks that overlap with y peaks
+    if (methylation_profile_in_narrow_region) {
+      ### if in 200bp around peaks
+      if (x_info$isMethMotifID) {
+        is_methProfile_meaningful_x <- TRUE
+        meth_level_200bp_x <- tryCatch(
+                                read.delim(x_info$meth_file_200bp_path,
+                                  sep = "\t", header = FALSE
+                                ),
+                              error = function(e) data.frame())
+        if (nrow(meth_level_200bp_x) > 0) {
+          colnames(meth_level_200bp_x) <- c("chr", "start", "end",
+                                            "meth_score", "C_num", "T_num")
+          meth_level_200bp_x$id <- paste0("200bp_CG_", as.vector(rownames(meth_level_200bp_x)))
+          meth_level_200bp_x_grange <- GRanges(meth_level_200bp_x$chr,
+                                                IRanges(meth_level_200bp_x$start,
+                                                        meth_level_200bp_x$end),
+                                                id=meth_level_200bp_x$id)
+          suppressWarnings(
+            meth_level_in_peakx_200bp <- unique(as.data.frame(subsetByOverlaps(meth_level_200bp_x_grange,
+                                                                               bedx_with_bedy)))
+          )
+          meth_level_in_peakx_200bp_allInfo <- unique(meth_level_200bp_x[which(meth_level_200bp_x$id
+                                                                                %in% meth_level_in_peakx_200bp$id), ])
+          meth_score_collection_x <- rbind(meth_score_collection_x,
+                                          meth_level_in_peakx_200bp_allInfo[, c("chr", "start", "end", "meth_score", "C_num", "T_num")])
+        }
+      }
+    }
+  }
+  # form methylation score profile - distribution for peak x
+  if (is_methProfile_meaningful_x) {
+    if (nrow(meth_score_collection_x) > 0) {
+      meth_score_distri_target_x <- formBetaScoreDistri(input_meth = as.data.frame(meth_score_collection_x$meth_score))
+    } else {
+      meth_score_distri_target_x <- formBetaScoreDistri(input_meth = data.frame())
+    }
+  } else {
+    meth_score_distri_target_x <- matrix()
+  }
+
+  intersect_info <- list(intersect_percentage = x_intersect_percentage, MethMotif = MethMotif_x, meth_score_distri_target = meth_score_distri_target_x, external_signal_in = external_signal_in_x, tag_density = tag_density_x)
+  return(intersect_info)
 }
 
 
