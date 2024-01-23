@@ -20,10 +20,10 @@
 #'                               return_annotation = TRUE, return_html_report = TRUE)
 
 genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
-                          return_html_report = FALSE, promoter_range = c(-1000,100),
+                          return_html_report = FALSE,
+                          promoter_range = c(-1000, 100),
                           TTS_range = c(-100, 1000), server = "ca",
-                          TFregulome_url, local_db_path = NULL)
-{
+                          TFregulome_url, local_db_path = NULL) {
   # check input arguments
   if (missing(peaks))
   {
@@ -95,39 +95,21 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
     return(NULL)
   }
 
-  # check server location
-  if (server != "sg" && server != "ca")
-  {
-    stop("server should be either 'sg' (default) or 'ca'!")
-  }
+  # build api_object
+  api_object <- .construct_api(server, TFregulome_url, local_db_path)
 
-  # call API helper function
-  TFregulome_url <- gsub("api/table_query/", "api/TFregulomeR/genomeAnnotate/",
-                         construct_API_url(server, TFregulome_url))
-  # helper function to check SQLite database
-  check_db_file(local_db_path)
-
-  #check existence of geneName conversion file in methmotif server
-  if (!is.null(local_db_path)) {
-    name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
-                                        "/TFregulomeR/genomeAnnotate/",
-                                        local_db_path),
-                                   "hg38_UCSC_to_GeneName.txt")
-  }
-  else {
-    name_conversion_file <- paste0(TFregulome_url, "hg38_UCSC_to_GeneName.txt")
-  }
-  name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
-                              warning=function(w) data.frame())
-  if (nrow(name_conversion) ==0) {
+  name_conversion <- tryCatch(
+    read.table(api_object@hg38_gene_name, sep = "\t"),
+    warning = function(w) data.frame()
+  )
+  if (nrow(name_conversion) == 0) {
     if (!is.null(local_db_path)) {
       message("There is a warning to connect TFregulomeR SQLite database!")
       message("Advice:")
       message("1) Check the path to the local database;")
       message("2) Current TFregulomeR server is version 2.1. The SQLite implementation of TFregulomeR database available at 'https://methmotif.org/API_ZIPPED.zip';")
       return(NULL)
-    }
-    else {
+    } else {
       message("There is a warning to connect MethMotif API!")
       message("Advice:")
       message("1) Check internet access;")
@@ -136,74 +118,47 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
     }
   }
 
-  peaks <- peaks[,c(1,2,3)]
-  colnames(peaks) <- c("chr","start", "end")
+  peaks <- peaks[, c(1, 2, 3)]
+  colnames(peaks) <- c("chr", "start", "end")
   peaks$id <- paste0("genomeAnnotate_peak_", as.vector(rownames(peaks)))
   peaks_gr <- GRanges(peaks$chr, IRanges(peaks$start+1, peaks$end), id=peaks$id)
-  #load knowgene
-  if (assembly=="hg38")
-  {
+  # load knownGene
+  if (assembly == "hg38") {
     txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene::TxDb.Hsapiens.UCSC.hg38.knownGene
     GenomeInfoDb::seqlevels(txdb) <- paste0(rep("chr",times=24), c(seq(1,22,1),"X","Y"))
-  } else if (assembly=="hg19")
-  {
+  } else if (assembly == "hg19") {
     txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene::TxDb.Hsapiens.UCSC.hg19.knownGene
     GenomeInfoDb::seqlevels(txdb) <- paste0(rep("chr",times=24), c(seq(1,22,1),"X","Y"))
-  } else if (assembly=="mm10")
-  {
+  } else if (assembly == "mm10") {
     txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene::TxDb.Mmusculus.UCSC.mm10.knownGene
     GenomeInfoDb::seqlevels(txdb) <- paste0(rep("chr",times=21), c(seq(1,19,1),"X","Y"))
-    if (!is.null(local_db_path)) {
-      name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
-                                          "/TFregulomeR/genomeAnnotate/",
-                                          local_db_path),
-                                     "mm10_UCSC_to_GeneName.txt")
-    }
-    else {
-      name_conversion_file <- paste0(TFregulome_url, "mm10_UCSC_to_GeneName.txt")
-    }
-    name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
-                                warning=function(w) data.frame())
-  } else
-  {
+    name_conversion <- tryCatch(
+      read.table(api_object@mm10_gene_name, sep = "\t"),
+      warning = function(w) data.frame()
+    )
+  } else {
     txdb <- TxDb.Mmusculus.UCSC.mm9.knownGene::TxDb.Mmusculus.UCSC.mm9.knownGene
     GenomeInfoDb::seqlevels(txdb) <- paste0(rep("chr",times=21), c(seq(1,19,1),"X","Y"))
-    if (!is.null(local_db_path)) {
-      name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
-                                          "/TFregulomeR/genomeAnnotate/",
-                                          local_db_path),
-                                     "mm10_UCSC_to_GeneName.txt")
-    }
-    else {
-      name_conversion_file <- paste0(TFregulome_url, "mm10_UCSC_to_GeneName.txt")
-    }
-    name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
-                                warning=function(w) data.frame())
+    name_conversion <- tryCatch(
+      read.table(api_object@mm10_gene_name, sep = "\t"),
+      warning = function(w) data.frame()
+    )
   }
 
   # load promoters to test the human gene name is the old UCSC version
   # (starts with 'uc') or new version (starts with 'ENS')
   all_TSS <- promoters(txdb, upstream = 0, downstream = 1)
-  if (assembly == "hg38" || assembly == "hg19")
-  {
+  if (assembly == "hg38" || assembly == "hg19") {
     all_TSS_df <- data.frame(all_TSS)
     # if new version, using the new version file from the server
-    if (startsWith(all_TSS_df[1,"tx_name"], "ENS"))
-    {
-      if (!is.null(local_db_path)) {
-        name_conversion_file <- paste0(gsub("/tfregulome.sqlite",
-                                            "/TFregulomeR/genomeAnnotate/",
-                                            local_db_path),
-                                       "hg38_UCSC_to_GeneName_NewVersion.txt")
-      }
-      else {
-        name_conversion_file <- paste0(TFregulome_url, "hg38_UCSC_to_GeneName_NewVersion.txt")
-      }
-      name_conversion <- tryCatch(read.table(name_conversion_file, sep = "\t"),
-                                  warning=function(w) data.frame())
+    if (startsWith(all_TSS_df[1, "tx_name"], "ENS")) {
+      name_conversion <- tryCatch(
+        read.table(api_object@hg38_new_gene_name, sep = "\t"),
+        warning = function(w) data.frame()
+      )
     }
   }
-  colnames(name_conversion) <- c("UCSC","gene_name")
+  colnames(name_conversion) <- c("UCSC", "gene_name")
   UCSC_name <- as.character(name_conversion$UCSC)
   gene_name <- as.character(name_conversion$gene_name)
   # promoter
@@ -229,8 +184,8 @@ genomeAnnotate <- function(peaks, assembly = "hg38", return_annotation = FALSE,
   if (nrow(peaks)>0)
   {
     peaks_gr <- GRanges(peaks$chr,
-                        IRanges(peaks$start+1, peaks$end),
-                        id=peaks$id)
+                        IRanges(peaks$start + 1, peaks$end),
+                        id = peaks$id)
     # get TTS
     all_transcript <- GenomicFeatures::transcripts(txdb, use.names=TRUE)
     all_transcript_df <- data.frame(all_transcript)

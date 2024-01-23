@@ -41,44 +41,33 @@ commonPeaks <- function(target_peak_id,
                         local_db_path = NULL)
 {
   # check the input arguments
-  if(missing(target_peak_id) && missing(user_target_peak_list))
-  {
+  if (missing(target_peak_id) && missing(user_target_peak_list)) {
     stop("No target peak input. Please input TFregulomeR peaks using TFregulomeR ID(s) by 'target_peak_id = ' OR your own peak list using a list of data.frame(s) containing bed-format regions by 'user_target_peak_list = '")
   }
-  if(missing(compared_peak_id) && missing(user_compared_peak_list))
-  {
+  if (missing(compared_peak_id) && missing(user_compared_peak_list)) {
     stop("No compared peak input. Please input TFregulomeR peaks using TFregulomeR ID(s) by 'compared_peak_id = ' OR your own peak list using a list of data.frame(s) containing bed-format regions by 'user_compared_peak_list = '")
   }
   if ((!missing(user_target_peak_list) && !is.list(user_target_peak_list)) ||
-      (!missing(user_compared_peak_list) && !is.list(user_compared_peak_list)))
-  {
+      (!missing(user_compared_peak_list) && !is.list(user_compared_peak_list))) {
     stop("The class of input 'user_target_peak_list' and 'user_compared_peak_list' should be 'list', a list of bed-like data.frame storing peak regions!")
   }
-  if (!is.logical(motif_only_for_target_peak) || !is.logical(motif_only_for_compared_peak))
-  {
+  if (!is.logical(motif_only_for_target_peak) || !is.logical(motif_only_for_compared_peak)) {
    stop("motif_only_for_target_peak and motif_only_for_compared_peak should be either TRUE or FALSE (default)")
   }
-  if (!is.logical(methylation_profile_in_narrow_region))
-  {
+  if (!is.logical(methylation_profile_in_narrow_region)) {
     stop("methylation_profile_in_narrow_region should be either TRUE (default) or FALSE")
   }
-  if (motif_type != "MEME" && motif_type != "TRANSFAC")
-  {
+  if (motif_type != "MEME" && motif_type != "TRANSFAC") {
     stop("motif_type should be either 'MEME' (default) or 'TRANSFAC'!")
   }
 
-  # call API helper function
-  TFregulome_url <- construct_API_url(server, TFregulome_url)
-  # helper function to check SQLite database
-  check_db_file(local_db_path)
+  # build api_object
+  api_object <- .construct_api(server, TFregulome_url, local_db_path)
 
   message("TFregulomeR::commonPeaks() starting ... ...")
-  if (methylation_profile_in_narrow_region)
-  {
+  if (methylation_profile_in_narrow_region) {
     message("You chose to profile the methylation levels in 200bp window around peak summits, if there is any peak set loaded from TFregulomeR")
-  }
-  else
-  {
+  } else {
     message("You chose NOT to profile the methylation levels in 200bp window around peak summits")
   }
   # loading target peak list
@@ -88,29 +77,23 @@ commonPeaks <- function(target_peak_id,
   TFregulome_target_peak_id <- c()
   is_taregt_TFregulome <- c()
   target_list_count <- 0
-  if (!missing(target_peak_id) && length(target_peak_id)>0)
-  {
+  if (!missing(target_peak_id) && length(target_peak_id) > 0) {
     message(paste0("... You have ", length(target_peak_id)," TFBS(s) requested to be loaded from TFregulomeR server"))
-    if (motif_only_for_target_peak == TRUE)
-    {
+    if (motif_only_for_target_peak == TRUE) {
       message("... You chose to load TF peaks with motif only. Using 'motif_only_for_target_peak' tunes your options")
-    }
-    else
-    {
+    } else {
       message("... You chose to load TF peaks regardless of presence of motif. Using 'motif_only_for_target_peak' tunes your options")
     }
     message("... loading TFBS(s) from TFregulomeR now")
-    for (i in target_peak_id)
-    {
-      peak_i <- suppressMessages(loadPeaks(id = i, includeMotifOnly = motif_only_for_target_peak,
-                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                           local_db_path = local_db_path))
-      if (is.null(peak_i))
-      {
+    for (i in target_peak_id) {
+      peak_i <- suppressMessages(.loadPeaks(
+        id = i,
+        includeMotifOnly = motif_only_for_target_peak,
+        api_object = api_object
+      ))
+      if (is.null(peak_i)) {
         message(paste0("... ... NO peak file for your id '", i,"'."))
-      }
-      else
-      {
+      } else {
         target_list_count <- target_list_count + 1
         target_peak_list_all[[target_list_count]] <- peak_i
         TFregulome_target_peak_id <- c(TFregulome_target_peak_id, i)
@@ -121,12 +104,10 @@ commonPeaks <- function(target_peak_id,
     message("... Done loading TFBS(s) from TFregulomeR")
   }
   # users' peaks
-  if (!missing(user_target_peak_list) && length(user_target_peak_list)>0)
-  {
+  if (!missing(user_target_peak_list) && length(user_target_peak_list) > 0) {
     message(paste0("... You have ",length(user_target_peak_list)," customised peak set(s)"))
-    if (missing(user_target_peak_id) || length(user_target_peak_id)!=length(user_target_peak_list) ||
-        length(unique(user_target_peak_id))!=length(user_target_peak_list))
-    {
+    if (missing(user_target_peak_id) || length(user_target_peak_id) != length(user_target_peak_list) ||
+        length(unique(user_target_peak_id)) != length(user_target_peak_list)) {
       message("... ... You didn't provide the ID for each customised peak set or your ID number does not uniquely equal to the input user peak number. Instead we will use 'user_target_peak1', 'user_target_peak2'..." )
       user_target_peak_id <- paste0("user_target_peak", seq(1,length(user_target_peak_list), 1))
     }
@@ -148,38 +129,32 @@ commonPeaks <- function(target_peak_id,
         colname_new[3] <- "end"
         # check if the input peak set has fourth column for id
         no_id <- TRUE
-        if (length(colname_new) >= 4)
-        {
-          if (length(unique(peak_i[,4])) == nrow(peak_i))
-          {
+        if (length(colname_new) >= 4) {
+          if (length(unique(peak_i[, 4])) == nrow(peak_i)) {
             colname_new[4] <- "id"
             no_id <- FALSE
           }
         }
         colnames(peak_i) <- colname_new
-        if (no_id)
-        {
+        if (no_id) {
           peak_i$id <- paste0(user_target_peak_id[i], "_", as.vector(rownames(peak_i)))
         }
         target_list_count <- target_list_count + 1
         target_peak_list_all[[target_list_count]] <- peak_i
         # test if user input id i match any TFregulomeR ID
-        motif_matrix_i <- suppressMessages(searchMotif(id = user_target_peak_id[i],
-                                                       TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                                       local_db_path = local_db_path))
-        if (is.null(motif_matrix_i))
-        {
+        motif_matrix_i <- suppressMessages(.searchMotif(
+          id = user_target_peak_id[i],
+          motif_format = motif_type,
+          api_object = api_object
+        ))
+        if (is.null(motif_matrix_i)) {
           is_taregt_TFregulome <- c(is_taregt_TFregulome, FALSE)
-        }
-        else
-        {
+        } else {
           is_taregt_TFregulome <- c(is_taregt_TFregulome, TRUE)
         }
       }
     }
-  }
-  else
-  {
+  } else {
     user_target_peak_id_new <- c()
   }
   # combine TFregulomeR ID and user ID
@@ -192,29 +167,23 @@ commonPeaks <- function(target_peak_id,
   # loading from TFregulomeR server
   compared_list_count <- 0
   TFregulome_compared_peak_id <- c()
-  if (!missing(compared_peak_id) && length(compared_peak_id)>0)
-  {
+  if (!missing(compared_peak_id) && length(compared_peak_id) > 0) {
     message(paste0("... You have ", length(compared_peak_id)," TFBS(s) requested to be loaded from TFregulomeR server"))
-    if (motif_only_for_compared_peak == TRUE)
-    {
+    if (motif_only_for_compared_peak == TRUE) {
       message("... You chose to load TF peaks with motif only. Using 'motif_only_for_compared_peak' tunes your options")
-    }
-    else
-    {
+    } else {
       message("... You chose to load TF peaks regardless of presence of motif. Using 'motif_only_for_compared_peak' tunes your options")
     }
     message("... loading TFBS(s) from TFregulomeR now")
-    for (i in compared_peak_id)
-    {
-      peak_i <- suppressMessages(loadPeaks(id = i, includeMotifOnly = motif_only_for_compared_peak,
-                                           TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                           local_db_path = local_db_path))
-      if (is.null(peak_i))
-      {
+    for (i in compared_peak_id) {
+      peak_i <- suppressMessages(.loadPeaks(
+        id = i,
+        includeMotifOnly = motif_only_for_compared_peak,
+        api_object = api_object
+      ))
+      if (is.null(peak_i)) {
         message(paste0("... ... NO peak file for your id '", i,"'."))
-      }
-      else
-      {
+      } else {
         compared_list_count <- compared_list_count + 1
         compared_peak_list_all[[compared_list_count]] <- peak_i
         is_compared_TFregulome <- c(is_compared_TFregulome, TRUE)
@@ -225,8 +194,7 @@ commonPeaks <- function(target_peak_id,
     message("... Done loading TFBS(s) from TFregulomeR")
   }
   # users' peaks
-  if (!missing(user_compared_peak_list) && length(user_compared_peak_list)>0)
-  {
+  if (!missing(user_compared_peak_list) && length(user_compared_peak_list) > 0) {
     message(paste0("... You have ",length(user_compared_peak_list)," customised peak set(s)"))
     if (missing(user_compared_peak_id) || length(user_compared_peak_id)!=length(user_compared_peak_list) ||
         length(unique(user_compared_peak_id))!=length(user_compared_peak_list))
@@ -236,15 +204,11 @@ commonPeaks <- function(target_peak_id,
     }
     # new user compared peak id in case that any input peak set is empty
     user_compared_peak_id_new <- c()
-    for (i in seq(1,length(user_compared_peak_list),1))
-    {
+    for (i in seq(1, length(user_compared_peak_list), 1)) {
       peak_i <- user_compared_peak_list[[i]]
-      if (nrow(peak_i) == 0)
-      {
+      if (nrow(peak_i) == 0) {
         message(paste0("... ... Your input peak set '",user_compared_peak_id[i],"' is empty, so SKIP!"))
-      }
-      else
-      {
+      } else {
         user_compared_peak_id_new <- c(user_compared_peak_id_new, user_compared_peak_id[i])
         peak_i_sub <- peak_i[,c(1,2,3)]
         colnames(peak_i_sub) <- c("chr","start","end")
@@ -253,15 +217,14 @@ commonPeaks <- function(target_peak_id,
         compared_list_count <- compared_list_count + 1
         compared_peak_list_all[[compared_list_count]] <- peak_i_sub
         # test if user input id i match any TFregulomeR ID
-        motif_matrix_i <- suppressMessages(searchMotif(id = user_compared_peak_id[i],
-                                                       TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                                       local_db_path = local_db_path))
-        if (is.null(motif_matrix_i))
-        {
+        motif_matrix_i <- suppressMessages(.searchMotif(
+          id = user_compared_peak_id[i],
+          motif_format = motif_type,
+          api_object = api_object
+        ))
+        if (is.null(motif_matrix_i)) {
           is_compared_TFregulome <- c(is_compared_TFregulome, FALSE)
-        }
-        else
-        {
+        } else {
           is_compared_TFregulome <- c(is_compared_TFregulome, TRUE)
         }
       }
@@ -269,73 +232,51 @@ commonPeaks <- function(target_peak_id,
   }
 
   # check if target peak list is empty
-  if (length(target_peak_list_all)==0)
-  {
+  if (length(target_peak_list_all) == 0) {
     message("No input in the target peak list. Function ends here!")
     return(NULL)
   }
   # check if compared peak list is empty
-  if (length(compared_peak_list_all)==0)
-  {
+  if (length(compared_peak_list_all) == 0) {
     message("No input in the compared peak list. Function ends here!")
     return(NULL)
   }
   # start analysing
   common_peak_matrix <- list()
-  for (i in seq(1,length(target_peak_list_all),1))
-  {
+  for (i in seq(1, length(target_peak_list_all), 1)) {
     target_id_i <- target_peak_id_all[i]
     target_peak_i <- target_peak_list_all[[i]]
     number_of_orignal_target <- nrow(target_peak_i)
     message(paste0("Start analysing: ", target_id_i, "... ..."))
 
     ## if it is from TFregulomeR
-    if (is_taregt_TFregulome[i])
-    {
+    if (is_taregt_TFregulome[i]) {
       isTFregulome_target <- TRUE
-      if (!is.null(local_db_path)) {
-        # make a request to the local database
-        request_content_df <- query_local_database(local_db_path,
-                                                   id = target_id_i)
-      }
-      else {
-        # make a json request to the API
-        request_content_json <- API_request(TFregulome_url,
-                                            id = target_id_i)
-        request_content_df <- as.data.frame(request_content_json$TFBS_records)
-      }
-      source_i <- request_content_df[,"source"]
-      if (source_i == "MethMotif")
-      {
+      # make the request
+      request_content_df <- apiRequest(api_object, id = target_id_i)
+      source_i <- request_content_df[, "source"]
+      if (source_i == "MethMotif") {
         isMethMotifID_target <- TRUE
-        motif_seq_path_target <- request_content_df[1,c("TFBS")]
-        meth_file_path_target <- request_content_df[1,c("DNA_methylation_profile")]
-        meth_file_200bp_path_target <- request_content_df[1,c("DNA_methylation_profile_200bp")]
-        WGBS_replicate_target <- request_content_df[1,c("WGBS_num")]
-      }
-      else
-      {
+        motif_seq_path_target <- request_content_df[1, c("TFBS")]
+        meth_file_path_target <- request_content_df[1, c("DNA_methylation_profile")]
+        meth_file_200bp_path_target <- request_content_df[1, c("DNA_methylation_profile_200bp")]
+        WGBS_replicate_target <- request_content_df[1, c("WGBS_num")]
+      } else {
         isMethMotifID_target <- FALSE
-        motif_seq_path_target <- request_content_df[1,c("TFBS")]
+        motif_seq_path_target <- request_content_df[1, c("TFBS")]
       }
-    }
-    else
-    {
+    } else {
       isTFregulome_target <- FALSE
     }
     # comparing with compared peak list
-    for (j in seq(1, length(compared_peak_list_all), 1))
-    {
+    for (j in seq(1, length(compared_peak_list_all), 1)) {
       compared_peak_j <- compared_peak_list_all[[j]]
-      if (isTFregulome_target)
-      {
+      if (isTFregulome_target) {
         bed_target_i <- GRanges(target_peak_i$chr,
                                 IRanges(target_peak_i$start-99,
                                         target_peak_i$end+100),
                                 id=target_peak_i$id)
-      }
-      else
-      {
+      } else {
         bed_target_i <- GRanges(target_peak_i$chr,
                                 IRanges(target_peak_i$start,
                                         target_peak_i$end),

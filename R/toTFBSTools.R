@@ -12,31 +12,32 @@
 #' require(TFBSTools)
 #' CEBPB_pfm <- toTFBSTools(id = "MM1_HSA_K562_CEBPB")
 
-toTFBSTools <- function(id, server = "ca", TFregulome_url, local_db_path)
-{
-  if (missing(id))
-  {
+toTFBSTools <- function(id, server = "ca", TFregulome_url,
+                        local_db_path = NULL) {
+  if (missing(id)) {
     stop("Please provide a TFregulomeR ID using 'id ='")
   }
 
-  # call API helper function
-  TFregulome_url <- construct_API_url(server, TFregulome_url)
-  # helper function to check SQLite database
-  check_db_file(local_db_path)
-
-  methmotif_output <- suppressMessages(searchMotif(id = id, motif_format = "TRANSFAC",
-                                                   TFregulome_url = gsub("api/table_query/", "", TFregulome_url),
-                                                   local_db_path = local_db_path))
-  if (is.null(methmotif_output))
-  {
+  # build api_object
+  api_object <- .construct_api(server, TFregulome_url, local_db_path)
+  methmotif_output <- suppressMessages(
+    .searchMotif(
+      id = id,
+      motif_format = "TRANSFAC",
+      api_object = api_object
+    )
+  )
+  if (is.null(methmotif_output)) {
     message(paste0("No record for id ", id, " in TFregulomeR!"))
     return(NULL)
-  }
-  else
-  {
+  } else {
     methmotif_output_transfac <- methmotif_output
-    pfm <- TFBSTools::PFMatrix(ID = methmotif_output_transfac@MMmotif@id, name = methmotif_output_transfac@MMmotif@alternate_name, strand = "*",
-                   bg = methmotif_output_transfac@MMmotif@background, profileMatrix = t(methmotif_output_transfac@MMmotif@motif_matrix))
+    pfm <- TFBSTools::PFMatrix(
+      ID = methmotif_output_transfac@MMmotif@id,
+      name = methmotif_output_transfac@MMmotif@alternate_name, strand = "*",
+      bg = methmotif_output_transfac@MMmotif@background,
+      profileMatrix = t(methmotif_output_transfac@MMmotif@motif_matrix)
+    )
     return(pfm)
   }
 }
