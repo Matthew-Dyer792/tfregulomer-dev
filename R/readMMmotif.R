@@ -89,33 +89,26 @@ readMMmotif <- function(motif_file_path, motif_format, id, num_peak,
       while (TRUE) {
         line <- readLines(con, n=1)
         line_count <- line_count + 1
-        if (line_count > 6 & grepl(pattern = "XX", line))
-        {
+        if (line_count > 6 && grepl(pattern = "XX", line)) {
           break
         }
         # id line
-        if (line_count == 5)
-        {
+        if (line_count == 5) {
           line_vector <- unlist(strsplit(as.character(line), split=" "))
           line_vector <- line_vector[line_vector != ""]
-          if (nchar(line_vector[2]) > nchar(line_vector[3]))
-          {
+          if (nchar(line_vector[2]) > nchar(line_vector[3])) {
             MMmotif_id <- id
             alternate_name <- as.character(line_vector[3])
-          }
-          else
-          {
+          } else {
             MMmotif_id <- id
             alternate_name <- as.character(line_vector[2])
           }
         }
         # motif matrix
-        if (line_count > 6 & !grepl(pattern = "XX", line))
-        {
-          line_vector <- unlist(strsplit(as.character(line), split="\t"))
+        if (line_count > 6 & !grepl(pattern = "XX", line)) {
+          line_vector <- unlist(strsplit(as.character(line), split = "\t"))
           line_vector <- line_vector[line_vector != ""]
-          for (line_vector_item in line_vector)
-          {
+          for (line_vector_item in line_vector) {
             motif_vector <- c(motif_vector, as.numeric(trimws(line_vector_item, which = "both")))
           }
         }
@@ -129,26 +122,25 @@ readMMmotif <- function(motif_file_path, motif_format, id, num_peak,
       # get background from MEME
       con_MEME <- file(motif_file_path_MEME, "r")
       line_count_MEME <- 0
-      background = c("A"=0.25, "C"=0.25, "G"=0.25, T=0.25)
-      while(TRUE){
-        line <- readLines(con, n=1)
+      background <- c("A" = 0.25, "C" = 0.25, "G" = 0.25, T = 0.25)
+      while (TRUE) {
+        line <- readLines(con, n = 1)
         line_count_MEME <- line_count_MEME + 1
-        if (length(line)==0)
-        {
+        if (length(line) == 0) {
           break
         }
         # background line
-        if (line_count_MEME == 8)
-        {
-          line_vector <- unlist(strsplit(as.character(line), split=" "))
+        if (line_count_MEME == 8) {
+          line_vector <- unlist(strsplit(as.character(line), split = " "))
           line_vector <- line_vector[line_vector != ""]
-          background <- c("A"=as.numeric(line_vector[2]), "C"=as.numeric(line_vector[4]),
-                         "G"=as.numeric(line_vector[6]), "T"=as.numeric(line_vector[8]))
+          background <- c(
+            "A" = as.numeric(line_vector[2]), "C" = as.numeric(line_vector[4]),
+            "G" = as.numeric(line_vector[6]), "T" = as.numeric(line_vector[8])
+          )
         }
         # width, evalue
-        if (line_count_MEME == 12)
-        {
-          line_vector <- unlist(strsplit(as.character(line), split=" "))
+        if (line_count_MEME == 12) {
+          line_vector <- unlist(strsplit(as.character(line), split = " "))
           line_vector <- line_vector[line_vector != ""]
           evalue <- as.numeric(line_vector[10])
           break
@@ -162,13 +154,11 @@ readMMmotif <- function(motif_file_path, motif_format, id, num_peak,
                               strand = "+ -", background = background,
                               id = MMmotif_id, alternate_name = alternate_name,
                               width = width, nsites = nsites, nPeaks = num_peak,
-                              evalue = evalue, motif_matrix = motif_matrix )
+                              evalue = evalue, motif_matrix = motif_matrix)
     }
 
     return(MMmotif)
-  }
-  else
-  {
+  } else {
     message("The motif file is NULL!")
     return(NULL)
   }
