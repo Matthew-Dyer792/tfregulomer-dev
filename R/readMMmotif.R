@@ -4,50 +4,50 @@ readMMmotif <- function(motif_file_path, motif_format, id, num_peak,
   con <- tryCatch({
     file(motif_file_path, "r")
   },
-  warning = function(w)
-  {
+  warning = function(w) {
     message(paste0("Warning: Please check your id, motif format or internet access!"))
     stop()
   },
-  error = function(err)
-  {
+  error = function(err) {
     message(paste0("Warning: Please check your id, motif format or internet access!"))
   })
 
   # start to process motif file if any
-  if (!is.null(con))
-  {
+  if (!is.null(con)) {
     # count motif file line
     line_count <- 0
     # store motif matrix values
     motif_vector <- c()
-    if (motif_format == "MEME")
-    {
+    if (motif_format == "MEME") {
       lines <- readLines(con)
-      if (length(lines)!=0) {
+      if (length(lines) != 0) {
         # version line
-        line_vector <- unlist(strsplit(as.character(lines[[1]]), split=" "))
+        line_vector <- unlist(strsplit(as.character(lines[[1]]), split = " "))
         line_vector <- line_vector[line_vector != ""]
         version <- as.numeric(substr(line_vector[[3]], start = 1, stop = 1))
-        
+
         # alphabet line
-        line_vector <- unlist(strsplit(as.character(lines[[3]]), split="="))
+        line_vector <- unlist(strsplit(as.character(lines[[3]]), split = "="))
         line_vector <- line_vector[line_vector != ""]
-        alphabet <- as.character(trimws(tail(line_vector, n = 1), which = "both"))
-        
+        alphabet <- as.character(trimws(
+          tail(line_vector, n = 1), which = "both"
+        ))
+
         # strands line
-        line_vector <- unlist(strsplit(as.character(lines[[5]]), split=":"))
+        line_vector <- unlist(strsplit(as.character(lines[[5]]), split = ":"))
         line_vector <- line_vector[line_vector != ""]
         strand <- as.character(trimws(tail(line_vector, n = 1), which = "both"))
-          
+
         # background line
-        line_vector <- unlist(strsplit(as.character(lines[[8]]), split=" "))
+        line_vector <- unlist(strsplit(as.character(lines[[8]]), split = " "))
         line_vector <- line_vector[line_vector != ""]
-        background = c("A"=as.numeric(line_vector[2]), "C"=as.numeric(line_vector[4]),
-                      "G"=as.numeric(line_vector[6]), "T"=as.numeric(line_vector[8]))
-        
+        background <- c(
+          "A" = as.numeric(line_vector[2]), "C" = as.numeric(line_vector[4]),
+          "G" = as.numeric(line_vector[6]), "T" = as.numeric(line_vector[8])
+        )
+
         # id line
-        line_vector <- unlist(strsplit(as.character(lines[[10]]), split=" "))
+        line_vector <- unlist(strsplit(as.character(lines[[10]]), split = " "))
         line_vector <- line_vector[line_vector != ""]
         if (nchar(line_vector[2]) > nchar(line_vector[3])) {
           MMmotif_id <- id
@@ -58,92 +58,23 @@ readMMmotif <- function(motif_file_path, motif_format, id, num_peak,
         }
 
         # width, evalue
-        line_vector <- unlist(strsplit(as.character(lines[[12]]), split=" "))
+        line_vector <- unlist(strsplit(as.character(lines[[12]]), split = " "))
         line_vector <- line_vector[line_vector != ""]
         width <- as.integer(line_vector[6])
         evalue <- as.numeric(line_vector[10])
-        
+
         # motif matrix
         for (line in lines[-1:-12]) {
-          line_vector <- unlist(strsplit(as.character(line), split=" "))
+          line_vector <- unlist(strsplit(as.character(line), split = " "))
           line_vector <- line_vector[line_vector != ""]
-          for (line_vector_item in line_vector)
-          {
-            motif_vector <- c(motif_vector, as.numeric(trimws(line_vector_item, which = "both")))
+          for (line_vector_item in line_vector) {
+            motif_vector <- c(motif_vector, as.numeric(trimws(
+              line_vector_item, which = "both"
+            )))
           }
         }
       }
-      # while(TRUE){
-      #   line <- readLines(con, n=1)
-      #   line_count <- line_count + 1
-      #   if (length(line)==0)
-      #   {
-      #     break
-      #   }
-      #   # version line
-      #   if (line_count == 1)
-      #   {
-      #     line_vector <- unlist(strsplit(as.character(line), split=" "))
-      #     line_vector <- line_vector[line_vector != ""]
-      #     version <- as.numeric(tail(line_vector, n=1))
-      #   }
-      #   # alphabet line
-      #   if (line_count == 3)
-      #   {
-      #     line_vector <- unlist(strsplit(as.character(line), split="="))
-      #     line_vector <- line_vector[line_vector != ""]
-      #     alphabet <- as.character(trimws(tail(line_vector, n = 1), which = "both"))
-      #   }
-      #   # strands line
-      #   if (line_count == 5)
-      #   {
-      #     line_vector <- unlist(strsplit(as.character(line), split=":"))
-      #     line_vector <- line_vector[line_vector != ""]
-      #     strand <- as.character(trimws(tail(line_vector, n = 1), which = "both"))
-      #   }
-      #   # background line
-      #   if (line_count == 8)
-      #   {
-      #     line_vector <- unlist(strsplit(as.character(line), split=" "))
-      #     line_vector <- line_vector[line_vector != ""]
-      #     background = c("A"=as.numeric(line_vector[2]), "C"=as.numeric(line_vector[4]),
-      #                    "G"=as.numeric(line_vector[6]), "T"=as.numeric(line_vector[8]))
-      #   }
-      #   # id line
-      #   if (line_count == 10)
-      #   {
-      #     line_vector <- unlist(strsplit(as.character(line), split=" "))
-      #     line_vector <- line_vector[line_vector != ""]
-      #     if (nchar(line_vector[2]) > nchar(line_vector[3]))
-      #     {
-      #       MMmotif_id <- id
-      #       alternate_name <- as.character(line_vector[3])
-      #     }
-      #     else
-      #     {
-      #       MMmotif_id <- id
-      #       alternate_name <- as.character(line_vector[2])
-      #     }
-      #   }
-      #   # width, evalue
-      #   if (line_count == 12)
-      #   {
-      #     line_vector <- unlist(strsplit(as.character(line), split=" "))
-      #     line_vector <- line_vector[line_vector != ""]
-      #     width <- as.integer(line_vector[6])
-      #     evalue <- as.numeric(line_vector[10])
-      #   }
-      #   # motif matrix
-      #   if (line_count > 12)
-      #   {
-      #     line_vector <- unlist(strsplit(as.character(line), split=" "))
-      #     line_vector <- line_vector[line_vector != ""]
-      #     for (line_vector_item in line_vector)
-      #     {
-      #       motif_vector <- c(motif_vector, as.numeric(trimws(line_vector_item, which = "both")))
-      #     }
-      #   }
-      # }
+
       motif_matrix <- matrix(motif_vector, ncol = 4, byrow = TRUE)
       colnames(motif_matrix) <- c("A", "C", "G", "T")
       close(con)
@@ -154,10 +85,8 @@ readMMmotif <- function(motif_file_path, motif_format, id, num_peak,
                               id = MMmotif_id, alternate_name = alternate_name,
                               width = width, nsites = nsites, nPeaks = num_peak,
                               evalue = evalue, motif_matrix = motif_matrix )
-    }
-    else
-    {
-      while(TRUE){
+    } else {
+      while (TRUE) {
         line <- readLines(con, n=1)
         line_count <- line_count + 1
         if (line_count > 6 & grepl(pattern = "XX", line))
