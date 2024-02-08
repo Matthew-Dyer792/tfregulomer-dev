@@ -4,10 +4,14 @@
 \alias{interactome3D}
 \title{interactome3D}
 \usage{
-interactome3D(intersectPeakMatrix, return_interactome_with_mCpG = FALSE,
+interactome3D(
+  intersectPeakMatrix,
+  return_interactome_with_mCpG = FALSE,
   mCpG_threshold = 0.8,
   return_interactome_with_external_source = FALSE,
-  external_source_value = "median", angle_of_matrix = "x")
+  external_source_value = "median",
+  angle_of_matrix = "x"
+)
 }
 \arguments{
 \item{intersectPeakMatrix}{Output of function 'intersectPeakMatrix()'.}

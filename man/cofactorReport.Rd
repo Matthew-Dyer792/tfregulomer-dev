@@ -4,8 +4,7 @@
 \alias{cofactorReport}
 \title{cofactorReport}
 \usage{
-cofactorReport(intersectPeakMatrix, top_num = 10,
-  cobinding_threshold = 0.05)
+cofactorReport(intersectPeakMatrix, top_num = 10, cobinding_threshold = 0.05)
 }
 \arguments{
 \item{intersectPeakMatrix}{Output of function 'intersectPeakMatrix()'.}

@@ -4,11 +4,15 @@
 \alias{exportMMPFM}
 \title{export motif position frequency matrix and beta score matrix}
 \usage{
-exportMMPFM(fun_output, fun, save_motif_PFM = FALSE,
+exportMMPFM(
+  fun_output,
+  fun,
+  save_motif_PFM = FALSE,
   save_betaScore_matrix = FALSE,
   angle_of_matrix_for_intersectPeakMatrix = "x",
   saving_id_x_for_intersectPeakMatrix = "all",
-  saving_id_y_for_intersectPeakMatrix = "all")
+  saving_id_y_for_intersectPeakMatrix = "all"
+)
 }
 \arguments{
 \item{fun_output}{Required. Output from "searchMotif", "commonPeaks", "exclusivePeaks" or "intersectPeakMatrix".}

@@ -4,27 +4,39 @@
 \alias{dataBrowser}
 \title{Browse the current data available in TFregulomeR}
 \usage{
-dataBrowser(species, organ, sample_type, cell_tissue_name, tf,
-  disease_state, source, server = "sg", TFregulome_url)
+dataBrowser(
+  species,
+  organ,
+  sample_type,
+  cell_tissue_name,
+  tf,
+  disease_state,
+  source,
+  server = "ca",
+  TFregulome_url,
+  local_db_path = NULL
+)
 }
 \arguments{
-\item{species}{The species of interset}
+\item{species}{The species of interest}
 
-\item{organ}{The organ of interset}
+\item{organ}{The organ of interest}
 
-\item{sample_type}{The sample type of interset}
+\item{sample_type}{The sample type of interest}
 
-\item{cell_tissue_name}{The name of tissue or cell of interset}
+\item{cell_tissue_name}{The name of tissue or cell of interest}
 
-\item{tf}{The TF of interset}
+\item{tf}{The TF of interest}
 
-\item{disease_state}{The disease state of interset}
+\item{disease_state}{The disease state of interest}
 
-\item{source}{The source of interset}
+\item{source}{The source of interest}
 
-\item{server}{server localtion to be linked, either 'sg' or 'ca'.}
+\item{server}{server location to be linked, either 'sg' or 'ca'.}
 
-\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "http://bioinfo-csi.nus.edu.sg/methmotif/" or "http://methmotif.org", please use a new url.}
+\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.}
+
+\item{local_db_path}{The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"}
 }
 \value{
 data.frame containing the information of the queried TFBSs in TFregulomeR

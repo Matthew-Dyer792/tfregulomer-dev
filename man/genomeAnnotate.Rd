@@ -4,9 +4,17 @@
 \alias{genomeAnnotate}
 \title{genomeAnnotate}
 \usage{
-genomeAnnotate(peaks, assembly = "hg38", return_annotation = FALSE,
-  return_html_report = FALSE, promoter_range = c(-1000, 100),
-  TTS_range = c(-100, 1000), server = "sg", TFregulome_url)
+genomeAnnotate(
+  peaks,
+  assembly = "hg38",
+  return_annotation = FALSE,
+  return_html_report = FALSE,
+  promoter_range = c(-1000, 100),
+  TTS_range = c(-100, 1000),
+  server = "ca",
+  TFregulome_url,
+  local_db_path = NULL
+)
 }
 \arguments{
 \item{peaks}{Required. A bed-format genomic regions in data frame.}
@@ -23,7 +31,9 @@ genomeAnnotate(peaks, assembly = "hg38", return_annotation = FALSE,
 
 \item{server}{server localtion to be linked, either 'sg' or 'ca'.}
 
-\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "http://bioinfo-csi.nus.edu.sg/methmotif/" or "http://methmotif.org", please use a new url.}
+\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.}
+
+\item{local_db_path}{The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"}
 }
 \value{
 a data.frame, or an HTML report depending on the options.

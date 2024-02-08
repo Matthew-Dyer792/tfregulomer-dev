@@ -4,16 +4,25 @@
 \alias{intersectPeakMatrixResult}
 \title{intersectPeakMatrix result}
 \usage{
-intersectPeakMatrixResult(intersectPeakMatrix,
-  return_intersection_matrix = FALSE, angle_of_matrix = "x",
-  return_tag_density = FALSE, angle_of_tag_density = "x",
-  tag_density_value = "median", return_external_source = FALSE,
-  angle_of_external_source = "x", external_source_value = "median",
+intersectPeakMatrixResult(
+  intersectPeakMatrix,
+  return_intersection_matrix = FALSE,
+  angle_of_matrix = "x",
+  return_tag_density = FALSE,
+  angle_of_tag_density = "x",
+  tag_density_value = "median",
+  return_external_source = FALSE,
+  angle_of_external_source = "x",
+  external_source_value = "median",
   return_methylation_profile = FALSE,
-  angle_of_methylation_profile = "x", save_MethMotif_logo = FALSE,
-  angle_of_logo = "x", logo_type = "entropy", meth_level = "all",
+  angle_of_methylation_profile = "x",
+  save_MethMotif_logo = FALSE,
+  angle_of_logo = "x",
+  logo_type = "entropy",
+  meth_level = "all",
   saving_MethMotif_logo_x_id = "all",
-  saving_MethMotif_logo_y_id = "all")
+  saving_MethMotif_logo_y_id = "all"
+)
 }
 \arguments{
 \item{intersectPeakMatrix}{Required. intersectPeakMatrix() output, a marix of IntersectPeakMatrix class objects.}

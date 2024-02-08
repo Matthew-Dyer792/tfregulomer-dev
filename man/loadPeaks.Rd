@@ -4,7 +4,13 @@
 \alias{loadPeaks}
 \title{load peaks from TFregulomeR}
 \usage{
-loadPeaks(id, includeMotifOnly = FALSE, server = "sg", TFregulome_url)
+loadPeaks(
+  id,
+  includeMotifOnly = FALSE,
+  server = "ca",
+  TFregulome_url,
+  local_db_path = NULL
+)
 }
 \arguments{
 \item{id}{Required. TFregulomeR ID}
@@ -13,7 +19,9 @@ loadPeaks(id, includeMotifOnly = FALSE, server = "sg", TFregulome_url)
 
 \item{server}{server localtion to be linked, either 'sg' or 'ca'.}
 
-\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "http://bioinfo-csi.nus.edu.sg/methmotif/" or "http://methmotif.org", please use a new url.}
+\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.}
+
+\item{local_db_path}{The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_TFregulomeR/downloads/"}
 }
 \value{
 a data.frame containing peak coordinates

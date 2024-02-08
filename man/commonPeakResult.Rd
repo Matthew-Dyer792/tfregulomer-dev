@@ -4,9 +4,15 @@
 \alias{commonPeakResult}
 \title{commonPeaks result}
 \usage{
-commonPeakResult(commonPeaks, return_common_peak_sites = FALSE,
-  save_MethMotif_logo = FALSE, return_methylation_profile = FALSE,
-  return_summary = FALSE, logo_type = "entropy", meth_level = "all")
+commonPeakResult(
+  commonPeaks,
+  return_common_peak_sites = FALSE,
+  save_MethMotif_logo = FALSE,
+  return_methylation_profile = FALSE,
+  return_summary = FALSE,
+  logo_type = "entropy",
+  meth_level = "all"
+)
 }
 \arguments{
 \item{commonPeaks}{Required. commonPeaks() output, a matrix of CommonPeaksMM class objects.}

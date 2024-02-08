@@ -4,9 +4,15 @@
 \alias{exclusivePeakResult}
 \title{exclusivePeaks result}
 \usage{
-exclusivePeakResult(exclusivePeaks, return_exclusive_peak_sites = FALSE,
-  save_MethMotif_logo = FALSE, return_methylation_profile = FALSE,
-  return_summary = FALSE, logo_type = "entropy", meth_level = "all")
+exclusivePeakResult(
+  exclusivePeaks,
+  return_exclusive_peak_sites = FALSE,
+  save_MethMotif_logo = FALSE,
+  return_methylation_profile = FALSE,
+  return_summary = FALSE,
+  logo_type = "entropy",
+  meth_level = "all"
+)
 }
 \arguments{
 \item{exclusivePeaks}{Required. exclusivePeaks() output, a matrix of ExclusivePeaksMM class objects.}

@@ -4,11 +4,22 @@
 \alias{intersectPeakMatrix}
 \title{intersectPeakMatrix}
 \usage{
-intersectPeakMatrix(peak_id_x, motif_only_for_id_x = FALSE,
-  user_peak_list_x, user_peak_x_id, peak_id_y,
-  motif_only_for_id_y = FALSE, user_peak_list_y, user_peak_y_id,
-  methylation_profile_in_narrow_region = FALSE, external_source,
-  motif_type = "MEME", server = "sg", TFregulome_url)
+intersectPeakMatrix(
+  peak_id_x,
+  motif_only_for_id_x = FALSE,
+  user_peak_list_x,
+  user_peak_x_id,
+  peak_id_y,
+  motif_only_for_id_y = FALSE,
+  user_peak_list_y,
+  user_peak_y_id,
+  methylation_profile_in_narrow_region = FALSE,
+  external_source,
+  motif_type = "MEME",
+  server = "ca",
+  TFregulome_url,
+  local_db_path = NULL
+)
 }
 \arguments{
 \item{peak_id_x}{Character of vector, each of which is a unique TFregulomeR ID.}
@@ -35,7 +46,9 @@ intersectPeakMatrix(peak_id_x, motif_only_for_id_x = FALSE,
 
 \item{server}{server localtion to be linked, either 'sg' or 'ca'.}
 
-\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "http://bioinfo-csi.nus.edu.sg/methmotif/" or "http://methmotif.org", please use a new url.}
+\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.}
+
+\item{local_db_path}{The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"}
 }
 \value{
 matrix of IntersectPeakMatrix class objects

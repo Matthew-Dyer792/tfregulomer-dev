@@ -4,12 +4,22 @@
 \alias{greatAnnotate}
 \title{greatAnnotate}
 \usage{
-greatAnnotate(peaks, assembly = "hg38", return_annotation = FALSE,
-  return_html_report = FALSE, pvalue = 0.01, test = "binomial",
-  great_rule = "basalPlusExt", great_adv_upstream = 5,
-  great_adv_downstream = 1, great_adv_span = 1000,
-  great_adv_twoDistance = 1000, great_adv_oneDistance = 1000,
-  request_interval = 60, great_version = "4.0")
+greatAnnotate(
+  peaks,
+  assembly = "hg38",
+  return_annotation = FALSE,
+  return_html_report = FALSE,
+  pvalue = 0.01,
+  test = "binomial",
+  great_rule = "basalPlusExt",
+  great_adv_upstream = 5,
+  great_adv_downstream = 1,
+  great_adv_span = 1000,
+  great_adv_twoDistance = 1000,
+  great_adv_oneDistance = 1000,
+  request_interval = 60,
+  great_version = "4.0"
+)
 }
 \arguments{
 \item{peaks}{Required. A bed-format genomic regions in data frame.}

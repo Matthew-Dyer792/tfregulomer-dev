@@ -4,11 +4,21 @@
 \alias{commonPeaks}
 \title{commonPeaks}
 \usage{
-commonPeaks(target_peak_id, motif_only_for_target_peak = FALSE,
-  user_target_peak_list, user_target_peak_id, compared_peak_id,
-  motif_only_for_compared_peak = FALSE, user_compared_peak_list,
-  user_compared_peak_id, methylation_profile_in_narrow_region = TRUE,
-  motif_type = "MEME", server = "sg", TFregulome_url)
+commonPeaks(
+  target_peak_id,
+  motif_only_for_target_peak = FALSE,
+  user_target_peak_list,
+  user_target_peak_id,
+  compared_peak_id,
+  motif_only_for_compared_peak = FALSE,
+  user_compared_peak_list,
+  user_compared_peak_id,
+  methylation_profile_in_narrow_region = TRUE,
+  motif_type = "MEME",
+  server = "ca",
+  TFregulome_url,
+  local_db_path = NULL
+)
 }
 \arguments{
 \item{target_peak_id}{Character of vector, each of which is a TFregulomeR ID. Each of target peak will be compared with all "compared peaks" to get its common subset.}
@@ -33,7 +43,9 @@ commonPeaks(target_peak_id, motif_only_for_target_peak = FALSE,
 
 \item{server}{server localtion to be linked, either 'sg' or 'ca'.}
 
-\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "http://bioinfo-csi.nus.edu.sg/methmotif/" or "http://methmotif.org", please use a new url.}
+\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.}
+
+\item{local_db_path}{The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"}
 }
 \value{
 matrix of CommonPeaksMM class objects

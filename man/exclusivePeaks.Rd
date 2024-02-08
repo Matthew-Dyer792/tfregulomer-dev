@@ -4,11 +4,21 @@
 \alias{exclusivePeaks}
 \title{exclusivePeaks}
 \usage{
-exclusivePeaks(target_peak_id, motif_only_for_target_peak = FALSE,
-  user_target_peak_list, user_target_peak_id, excluded_peak_id,
-  motif_only_for_excluded_peak = FALSE, user_excluded_peak_list,
-  user_excluded_peak_id, methylation_profile_in_narrow_region = TRUE,
-  motif_type = "MEME", server = "sg", TFregulome_url)
+exclusivePeaks(
+  target_peak_id,
+  motif_only_for_target_peak = FALSE,
+  user_target_peak_list,
+  user_target_peak_id,
+  excluded_peak_id,
+  motif_only_for_excluded_peak = FALSE,
+  user_excluded_peak_list,
+  user_excluded_peak_id,
+  methylation_profile_in_narrow_region = TRUE,
+  motif_type = "MEME",
+  server = "ca",
+  TFregulome_url,
+  local_db_path = NULL
+)
 }
 \arguments{
 \item{target_peak_id}{Character of vector, each of which is a TFregulomeR ID. Each of target peak will be compared with all "excluded peaks" to get its exclusive subset.}
@@ -33,7 +43,9 @@ exclusivePeaks(target_peak_id, motif_only_for_target_peak = FALSE,
 
 \item{server}{server localtion to be linked, either 'sg' or 'ca'.}
 
-\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "http://bioinfo-csi.nus.edu.sg/methmotif/" or "http://methmotif.org", please use a new url.}
+\item{TFregulome_url}{TFregulomeR server is implemented in MethMotif server. If the MethMotif url is NO more "https://bioinfo-csi.nus.edu.sg/methmotif/" or "https://methmotif.org", please use a new url.}
+
+\item{local_db_path}{The complete path to the SQLite implementation of TFregulomeR database available at "https://methmotif.org/API_ZIPPED.zip"}
 }
 \value{
 matrix of ExclusivePeaksMM class objects
