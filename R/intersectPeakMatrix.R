@@ -10,7 +10,6 @@
 #' @param user_peak_list_y A list of data.frames, each of which contains user's own bed-format peak regions for peak list y.
 #' @param user_peak_y_id Character of vector, each of which is a unique ID corresponding to each peak set in the list user_peak_list_y. If the IDs are not provided or not unique, the function will automatically generate the IDs of its own. If any of the peak sets is derived from TFregulomeR, its TFregulomeR ID should be used here correspondingly.
 #' @param methylation_profile_in_narrow_region Either TRUE (default) of FALSE. If TRUE, methylation states in 200bp window surrounding peak summits for each intersected peak pair from peak_id_x (peak_id_y) and user_peak_list_x (user_peak_list_y) with TFregulomeR ID.
-#' @param only_overlapping_tfbs Either TRUE of FALSE (default). If TRUE, only TFBS sites directly overlapping between the x and y sites will be returned.
 #' @param external_source a bed-like data.frame files with the fourth column as the score to be profiled in pairwise comparison regions.
 #' @param motif_type Motif PFM format, either in MEME by default or TRANSFAC.
 #' @param server server localtion to be linked, either 'sg' or 'ca'.
