@@ -555,55 +555,63 @@ intersect_peak_regions <- function(x_info, y_info, external_source_provided, ext
 }
 
 
-formMatrixFromSeq <- function(input_sequence, motif_format)
-{
+formMatrixFromSeq <- function(input_sequence, motif_format) {
   input_sequence <- as.data.frame(input_sequence)
-  input_sequence_matrix <- data.frame(do.call('rbind', strsplit(as.character(input_sequence$input_sequence),'',fixed=TRUE)))
+  input_sequence_matrix <- data.frame(
+    do.call(
+      "rbind",
+      strsplit(as.character(input_sequence$input_sequence), "", fixed = TRUE)
+    )
+  )
 
-  motif_matrix_TRANSFAC <- matrix(rep(-1, 4*ncol(input_sequence_matrix)), ncol = 4)
-  alphabet <- c("A","C","G","T")
+  motif_matrix_TRANSFAC <- matrix(
+    rep(-1, 4 * ncol(input_sequence_matrix)),
+    ncol = 4
+  )
+  alphabet <- c("A", "C", "G", "T")
   colnames(motif_matrix_TRANSFAC) <- alphabet
 
-  for (i in seq(1,4,1)){
-    for (j in seq(1,ncol(input_sequence_matrix),1)){
-      motif_matrix_TRANSFAC[j, i] <- sum(input_sequence_matrix[,j] == alphabet[i])
+  for (i in seq(1, 4, 1)){
+    for (j in seq(1, ncol(input_sequence_matrix), 1)) {
+      motif_matrix_TRANSFAC[j, i] <- sum(
+        input_sequence_matrix[, j] == alphabet[i]
+      )
     }
   }
-  motif_matrix_MEME <- motif_matrix_TRANSFAC/nrow(input_sequence_matrix)
+  motif_matrix_MEME <- motif_matrix_TRANSFAC / nrow(input_sequence_matrix)
 
-  if (motif_format == "MEME"){
+  if (motif_format == "MEME") {
     return(motif_matrix_MEME)
-  }
-  else{
+  } else {
     return(motif_matrix_TRANSFAC)
   }
 }
 
 
-formBetaScoreFromSeq <- function(input_meth, WGBS_replicate, motif_len)
-{
-  if (nrow(input_meth) == 0)
-  {
+formBetaScoreFromSeq <- function(input_meth, WGBS_replicate, motif_len) {
+  if (nrow(input_meth) == 0) {
     empty_matrix <- TRUE
-  }
-  else
-  {
-    if (WGBS_replicate=="2"){
-      input_meth <- unique(input_meth[,c("chr","start","end","meth_score","C_num","T_num","seq_chr",
-                                         "seq_start","seq_end","strand","sequence")])
-      input_meth_d <- input_meth[which(input_meth$strand=="+"),]
-      input_meth_r <- input_meth[which(input_meth$strand=="-"),]
+  } else {
+    if (WGBS_replicate == "2") {
+      input_meth <- unique(input_meth[, c(
+        "chr", "start", "end", "meth_score", "C_num", "T_num", "seq_chr",
+        "seq_start", "seq_end", "strand", "sequence"
+      )])
+      input_meth_d <- input_meth[which(input_meth$strand == "+"), ]
+      input_meth_r <- input_meth[which(input_meth$strand == "-"), ]
 
-      input_meth_d$dis <- input_meth_d$start-input_meth_d$seq_start+1
-      input_meth_r$dis <- motif_len-(input_meth_r$start-input_meth_r$seq_start+1)
+      input_meth_d$dis <- input_meth_d$start - input_meth_d$seq_start + 1
+      input_meth_r$dis <- motif_len - (
+        input_meth_r$start - input_meth_r$seq_start + 1
+      )
 
-      if(nrow(input_meth_d)==0 && nrow(input_meth_r)==0){
+      if (nrow(input_meth_d) == 0 && nrow(input_meth_r) == 0) {
         empty_matrix <- TRUE
-      } else if(nrow(input_meth_d)==0 && nrow(input_meth_r)!=0){
-        input_meth_sub <- input_meth_r[,c("dis","meth_score")]
+      } else if (nrow(input_meth_d) == 0 && nrow(input_meth_r) !=0 ) {
+        input_meth_sub <- input_meth_r[, c("dis", "meth_score")]
         empty_matrix <- FALSE
-      }  else if(nrow(input_meth_d)!=0 && nrow(input_meth_r)==0){
-        input_meth_sub <- input_meth_d[,c("dis","meth_score")]
+      }  else if (nrow(input_meth_d) != 0 && nrow(input_meth_r) == 0) {
+        input_meth_sub <- input_meth_d[, c("dis", "meth_score")]
         empty_matrix <- FALSE
       } else if(nrow(input_meth_d)!=0 && nrow(input_meth_r)!=0){
         input_meth_d_sub <- input_meth_d[,c("dis","meth_score")]
@@ -611,8 +619,7 @@ formBetaScoreFromSeq <- function(input_meth, WGBS_replicate, motif_len)
         input_meth_sub <- rbind(input_meth_d_sub, input_meth_r_sub)
         empty_matrix <- FALSE
       }
-    }
-    else{
+    } else {
       input_meth <- unique(input_meth[,c("chr","start","end","meth_score","C_num","T_num","seq_chr",
                                          "seq_start","seq_end","strand","sequence")])
       input_meth_d <- input_meth[which(input_meth$strand=="+"),]
