@@ -140,7 +140,7 @@ exclusivePeaks <- function(target_peak_id,
         # test if user input id i match any TFregulomeR ID
         motif_matrix_i <- suppressMessages(.searchMotif(
           id = user_target_peak_id[i],
-          motif_type = motif_type,
+          motif_format = motif_type,
           api_object = api_object
         ))
         if (is.null(motif_matrix_i)) {
