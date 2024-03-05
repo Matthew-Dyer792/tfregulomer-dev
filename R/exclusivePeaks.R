@@ -133,7 +133,11 @@ exclusivePeaks <- function(target_peak_id,
         }
         colnames(peak_i) <- colname_new
         if (no_id) {
-          peak_i$id <- paste0(user_target_peak_id[i], "_", as.vector(rownames(peak_i)))
+          peak_i$id <- paste0(
+            user_target_peak_id[i],
+            "_",
+            as.vector(rownames(peak_i))
+          )
         }
         target_list_count <- target_list_count + 1
         target_peak_list_all[[target_list_count]] <- peak_i
@@ -355,8 +359,8 @@ exclusivePeaks <- function(target_peak_id,
               meth_level_target$id <- paste0(
                 target_id_i,
                 "_motif_with_CG_",
-                as.vector(rownames(meth_level_target)
-              ))
+                as.vector(rownames(meth_level_target))
+              )
               meth_level_target_grange <- GRanges(
                 meth_level_target$seq_chr,
                 IRanges(meth_level_target$seq_start,

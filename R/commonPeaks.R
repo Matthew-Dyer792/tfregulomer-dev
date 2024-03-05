@@ -113,15 +113,11 @@ commonPeaks <- function(target_peak_id,
     }
     # new user target peak id in case that any input peak set is empty
     user_target_peak_id_new <- c()
-    for (i in seq(1, length(user_target_peak_list), 1))
-    {
+    for (i in seq(1, length(user_target_peak_list), 1)) {
       peak_i <- user_target_peak_list[[i]]
-      if (nrow(peak_i)==0)
-      {
+      if (nrow(peak_i) == 0) {
         message(paste0("... ... Your input peak set '",user_target_peak_id[i],"' is empty, so SKIP!"))
-      }
-      else
-      {
+      } else {
         user_target_peak_id_new <- c(user_target_peak_id_new, user_target_peak_id[i])
         colname_new <- colnames(peak_i)
         colname_new[1] <- "chr"
@@ -137,7 +133,11 @@ commonPeaks <- function(target_peak_id,
         }
         colnames(peak_i) <- colname_new
         if (no_id) {
-          peak_i$id <- paste0(user_target_peak_id[i], "_", as.vector(rownames(peak_i)))
+          peak_i$id <- paste0(
+            user_target_peak_id[i],
+            "_",
+            as.vector(rownames(peak_i))
+          )
         }
         target_list_count <- target_list_count + 1
         target_peak_list_all[[target_list_count]] <- peak_i
